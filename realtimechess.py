@@ -131,6 +131,7 @@ async def main_page(request):
 	    content_type="text/html")
 
 
+@auth.authenticated
 async def opened_handler(request):
 	user = auth.get_current_user(request)
 	game_key = request.query.get('g')
@@ -142,6 +143,7 @@ async def opened_handler(request):
 	return aiohttp.web.Response(text="OK")
 
 
+@auth.authenticated
 async def ping_handler(request):
 	user = auth.get_current_user(request)
 	game_key = request.query.get('g')

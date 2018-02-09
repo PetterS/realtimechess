@@ -6,6 +6,18 @@ import re
 
 secret_key = b"Chess secret key that no one knows."
 
+users = {}
+
+
+class User:
+	def __init__(self, name, password):
+		self.id = name + "@anon.com"
+		self.name = name
+		self.password = password
+
+	def __str__(self):
+		return self.id
+
 
 def password(name):
 	sha256 = hashlib.sha256()
@@ -26,18 +38,13 @@ def get_current_user(request):
 		print("Incorrect password for " + name)
 		return None
 
-
-users = {}
-
-
-class User:
-	def __init__(self, name, password):
-		self.id = name + "@anon.com"
-		self.name = name
-		self.password = password
-
-	def __str__(self):
-		return self.id
+def authenticated(handler):
+	def call_handler_if_ok(request):
+		user = get_current_user(request)
+		if user is None:
+ 			aiohttp.web.HTTPForbidden(text="Not logged in.")
+		return handler(request)
+	return call_handler_if_ok
 
 
 async def anonymous_login_handler(request):

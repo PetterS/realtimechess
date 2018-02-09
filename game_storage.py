@@ -5,6 +5,7 @@ import os
 
 from constants import *
 from protocol import Piece
+from util import HttpCodeException
 
 games = {}
 
