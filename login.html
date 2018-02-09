@@ -1,0 +1,358 @@
+<html>  
+  <head>
+      <script src='/_ah/channel/jsapi'></script>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+      <script src="/game/constants.min.js"></script>
+
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+      <link rel="stylesheet" type="text/css" href="/game/game.css" />
+      <style type='text/css'>
+
+        #message {
+          position:absolute;
+          color: #000000;
+          background-color: #FFE000;
+          border:2px solid #333;
+          width:15vw;
+          text-align: center;
+          vertical-align: middle;
+          padding-bottom: 8px;
+          padding-top: 8px;
+          padding-left: 8px;
+          padding-right: 8px;
+          margin-left: 100px;
+        }
+
+        .loginLink {
+          margin-bottom: 20px;
+        }
+      </style>
+<script type='text/javascript'>
+jQuery.fn.rotate = function(degrees) {
+    $(this).css({'-webkit-transform' : 'rotate('+ degrees +'deg)',
+                 '-moz-transform' : 'rotate('+ degrees +'deg)',
+                 '-ms-transform' : 'rotate('+ degrees +'deg)',
+                 'transform' : 'rotate('+ degrees +'deg)'});
+    return $(this);
+};
+
+var BLACK_ROOK   = "\u265C";
+var BLACK_KNIGHT = "\u265E";
+var BLACK_BISHOP = "\u265D";
+var BLACK_QUEEN  = "\u265B";
+var BLACK_KING   = "\u265A";
+var BLACK_PAWN   = "\u265F";
+var WHITE_ROOK   = "\u2656";
+var WHITE_KNIGHT = "\u2658";
+var WHITE_BISHOP = "\u2657";
+var WHITE_QUEEN  = "\u2655";
+var WHITE_KING   = "\u2654";
+var WHITE_PAWN   = "\u2659";
+var pieces = [
+  {value:BLACK_ROOK},
+  {value:BLACK_BISHOP},
+  {value:BLACK_KNIGHT},
+  {value:BLACK_QUEEN},
+  {value:BLACK_KING},
+  {value:BLACK_BISHOP},
+  {value:BLACK_KNIGHT},
+  {value:BLACK_ROOK},
+];
+
+updateStaticPiece = function(i, pos) {
+  if (i == 0) {
+    if (pos == "A6") {
+      updateMovingPiece(0, 7.07, "A8");
+    } else {
+      updateMovingPiece(0, 7.07, "A6");
+    }
+  } else if (i == 1) {
+    if (pos == "C8") {
+      updateMovingPiece(1, 7.07, "H3");
+    } else {
+      updateMovingPiece(1, 7.07, "C8");
+    }
+  }
+}
+
+showMessage = function(pos, msg) {
+  message.offset(off);
+  message.text(msg);
+  message.hide();
+  message.fadeIn(500).delay(750).fadeOut(500);
+}
+
+updateSleepingPiece = function(i, pos) {
+  pieces[i].pos = pos;
+  pieces[i].moving = false;
+  pieces[i].sleeping = true;
+
+  // Set the correct position of the piece.
+  var square = $("#" + pos);
+  var animationTarget = square.offset();
+  var piece = $("#p" + i);
+
+  // Stop all previous animations.
+  piece.stop(true);
+
+  // Adjust rotation before and after setting position, to
+  // avoid the rotation introducing an offset.
+  piece.rotate(0);
+  piece.offset(animationTarget);
+  piece.rotate(pieces[i].rotation);
+
+  if (i == 0) {
+    $("#message").show()
+    message = $("#message");
+    off = $("#" + pieces[i].pos).offset();
+    off.left += 75;
+    showMessage(off, "Then they sleep for " + SLEEPING_TIME + " seconds.");
+  }
+
+  var startRotation = pieces[i].rotation;
+  var endRotation = 0.0;
+
+  var duration = SLEEPING_TIME;
+
+  var animationComplete = function() {
+    updateStaticPiece(i, pos);
+  };
+  var animationProgress = function(animation, progress, remainingMs) {
+    pieces[i].rotation = (1.0 - progress) * startRotation + progress * endRotation;
+    piece.rotate(pieces[i].rotation);
+  };
+  if (duration > 0) {
+    piece.animate(animationTarget,
+        {
+          "duration": 1000 * duration,
+          "done": animationComplete,
+          "progress": animationProgress,
+        });
+  } else {
+    animationComplete();
+  }
+}
+
+updateMovingPiece = function(i, duration, endPos) {
+  pieces[i].moving = true;
+  pieces[i].sleeping = false;
+
+  // Set the piece moving towards the end square.
+  var square = $("#" + endPos);
+  var animationTarget = square.offset();
+  var piece = $("#p" + i);
+
+  if (i == 0) {
+    $("#message").show()
+    message = $("#message");
+    off = $("#" + pieces[i].pos).offset();
+    off.left += 75;
+    showMessage(off, "Pieces can move simultaneosly.")
+  }
+
+  // Stop all previous animations.
+  piece.stop(true);
+
+
+  var startRotation = pieces[i].rotation;
+  var endRotation = -90.0;
+
+  var animationComplete = function() {
+    updateSleepingPiece(i, endPos);
+  };
+  var animationProgress = function(animation, progress, remainingMs) {
+    pieces[i].rotation = (1.0 - progress) * startRotation + progress * endRotation;
+    piece.rotate(pieces[i].rotation);
+  };
+  if (duration > 0) {
+    piece.animate(animationTarget,
+        {
+          "duration": 1000 * duration,
+          "done": animationComplete,
+          "progress": animationProgress,
+        });
+  } else {
+    animationComplete();
+  }
+
+}
+
+$(document).ready(function () {
+  $("#message").hide();
+});
+
+$(window).load(function() {
+  pieces[0].pos = "A8";
+  pieces[1].pos = "C8";
+  pieces[2].pos = "B8";
+  pieces[3].pos = "D8";
+  pieces[4].pos = "E8";
+  pieces[5].pos = "F8";
+  pieces[6].pos = "G8";
+  pieces[7].pos = "H8";
+
+  for (var i = 0; i < 8; ++i) {
+    pieces[i].rotation = 0;
+
+    var piece = $("#p" + i);
+    piece.text(pieces[i].value)
+    var square = $("#" + pieces[i].pos);
+    console.log(square)
+    var pos = square.offset();
+    console.log(pos)
+    var piece = $("#p" + i);
+    piece.offset(pos);
+    piece.rotate(0);
+  }
+
+  updateMovingPiece(0, 3.0, "A6");
+  updateMovingPiece(1, 7.07, "H3");
+});
+</script>
+  </head>
+  <body>
+    <div id='display-area'>
+      <h2 id="headline">Real-time Chess</h2>
+
+      <div class="piece squareSize" id="p0"></div>
+      <div class="piece squareSize" id="p1"></div>
+      <div class="piece squareSize" id="p2"></div>
+      <div class="piece squareSize" id="p3"></div>
+      <div class="piece squareSize" id="p4"></div>
+      <div class="piece squareSize" id="p5"></div>
+      <div class="piece squareSize" id="p6"></div>
+      <div class="piece squareSize" id="p7"></div>
+      <div class="piece squareSize" id="p8"></div>
+      <div class="piece squareSize" id="p9"></div>
+      <div class="piece squareSize" id="p10"></div>
+      <div class="piece squareSize" id="p11"></div>
+      <div class="piece squareSize" id="p12"></div>
+      <div class="piece squareSize" id="p13"></div>
+      <div class="piece squareSize" id="p14"></div>
+      <div class="piece squareSize" id="p15"></div>
+      <div class="piece squareSize" id="p16"></div>
+      <div class="piece squareSize" id="p17"></div>
+      <div class="piece squareSize" id="p18"></div>
+      <div class="piece squareSize" id="p19"></div>
+      <div class="piece squareSize" id="p20"></div>
+      <div class="piece squareSize" id="p21"></div>
+      <div class="piece squareSize" id="p22"></div>
+      <div class="piece squareSize" id="p23"></div>
+      <div class="piece squareSize" id="p24"></div>
+      <div class="piece squareSize" id="p25"></div>
+      <div class="piece squareSize" id="p26"></div>
+      <div class="piece squareSize" id="p27"></div>
+      <div class="piece squareSize" id="p28"></div>
+      <div class="piece squareSize" id="p29"></div>
+      <div class="piece squareSize" id="p30"></div>
+      <div class="piece squareSize" id="p31"></div>
+
+      <div id="message"></div>
+
+      <div align="center">
+      <div class="loginLink">
+        <a href="{{ login_link }}"><img src="game/btn_google_signin_dark_normal_web.png" /></a>
+      </div>
+      <div class="loginLink">
+        Or choose your name:
+        <form action="anonymous_login" method="POST">
+          <input type="hidden" name="destination" value="{{ destination }}" />
+          <input type="text" name="name" size=20 />&nbsp;&nbsp;<input type="submit" value="Login" class="gameButton" />
+        </form>
+      </div>
+      <table id="chess_board" cellpadding="0" cellspacing="0">
+        <tr>
+          <td id="A8" class="squareSize"></td>
+          <td id="B8" class="squareSize"></td>
+          <td id="C8" class="squareSize"></td>
+          <td id="D8" class="squareSize"></td>
+          <td id="E8" class="squareSize"></td>
+          <td id="F8" class="squareSize"></td>
+          <td id="G8" class="squareSize"></td>
+          <td id="H8" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A7" class="squareSize"></td>
+          <td id="B7" class="squareSize"></td>
+          <td id="C7" class="squareSize"></td>
+          <td id="D7" class="squareSize"></td>
+          <td id="E7" class="squareSize"></td>
+          <td id="F7" class="squareSize"></td>
+          <td id="G7" class="squareSize"></td>
+          <td id="H7" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A6" class="squareSize"></td>
+          <td id="B6" class="squareSize"></td>
+          <td id="C6" class="squareSize"></td>
+          <td id="D6" class="squareSize"></td>
+          <td id="E6" class="squareSize"></td>
+          <td id="F6" class="squareSize"></td>
+          <td id="G6" class="squareSize"></td>
+          <td id="H6" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A5" class="squareSize"></td>
+          <td id="B5" class="squareSize"></td>
+          <td id="C5" class="squareSize"></td>
+          <td id="D5" class="squareSize"></td>
+          <td id="E5" class="squareSize"></td>
+          <td id="F5" class="squareSize"></td>
+          <td id="G5" class="squareSize"></td>
+          <td id="H5" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A4" class="squareSize"></td>
+          <td id="B4" class="squareSize"></td>
+          <td id="C4" class="squareSize"></td>
+          <td id="D4" class="squareSize"></td>
+          <td id="E4" class="squareSize"></td>
+          <td id="F4" class="squareSize"></td>
+          <td id="G4" class="squareSize"></td>
+          <td id="H4" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A3" class="squareSize"></td>
+          <td id="B3" class="squareSize"></td>
+          <td id="C3" class="squareSize"></td>
+          <td id="D3" class="squareSize"></td>
+          <td id="E3" class="squareSize"></td>
+          <td id="F3" class="squareSize"></td>
+          <td id="G3" class="squareSize"></td>
+          <td id="H3" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A2" class="squareSize"></td>
+          <td id="B2" class="squareSize"></td>
+          <td id="C2" class="squareSize"></td>
+          <td id="D2" class="squareSize"></td>
+          <td id="E2" class="squareSize"></td>
+          <td id="F2" class="squareSize"></td>
+          <td id="G2" class="squareSize"></td>
+          <td id="H2" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A1" class="squareSize"></td>
+          <td id="B1" class="squareSize"></td>
+          <td id="C1" class="squareSize"></td>
+          <td id="D1" class="squareSize"></td>
+          <td id="E1" class="squareSize"></td>
+          <td id="F1" class="squareSize"></td>
+          <td id="G1" class="squareSize"></td>
+          <td id="H1" class="squareSize"></td>
+        </tr>
+      </table>
+      <div id="gameInformation">
+        Real-time Chess is like normal chess, but there are no turns! All pieces can be moved at any time, but there
+        is a small delay afterwards.
+      </div>
+      <div class="topPlayers beforeGame">
+        <h3>Top Players</h3>
+        <table>
+          <tr><td>Name</td><td>Rating</td></tr>
+          {{ top_players|safe }}
+        </table>
+      </div>
+    </div>     
+  </body>
+</html>

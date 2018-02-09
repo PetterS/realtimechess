@@ -1,0 +1,230 @@
+#!/usr/bin/python3
+# coding=utf-8
+# pylint: disable-msg=C6310
+
+import asyncio
+import datetime
+import json
+import logging
+import os
+import random
+import re
+import time
+import signal
+import sys
+
+import aiohttp.web
+from jinja2 import Template
+
+import auth
+import game_storage
+
+HTTP_PORT = 8080
+
+index_template = Template(
+    open(os.path.join(os.path.dirname(__file__), 'index.html')).read())
+login_template = Template(
+    open(os.path.join(os.path.dirname(__file__), 'login.html')).read())
+
+
+async def login_page(request):
+	game_key = request.match_info.get('g')
+	if game_key is not None:
+		destination = "/?g=" + str(game_key)
+	else:
+		destination = "/"
+	template_values = {
+	    'destination': destination,
+	    'login_link': "",
+	    'top_players': ""
+	}
+	return aiohttp.web.Response(
+	    text=login_template.render(**template_values),
+	    content_type="text/html")
+
+
+async def main_page(request):
+	"""Renders the main page. When this page is shown, we create a new
+	channel to push asynchronous updates to the client."""
+	user = auth.get_current_user(request)
+	game_key = request.query.get('g')
+	original_game_key = game_key
+
+	print("Main page:", user, game_key)
+
+	if not user:
+		if game_key is not None:
+			return aiohttp.web.HTTPFound("/loginpage?g=" + str(game_key))
+		else:
+			return aiohttp.web.HTTPFound("/loginpage")
+
+	if not game_key:
+		game, game_key = game_storage.new(user)
+		print("New game from " + str(user))
+	else:
+		game = game_storage.get(game_key)
+		if not game:
+			raise aiohttp.web.HTTPNotFound(text="Game not found")
+
+		print("-- Game userX: " + game.userX_id)
+		print("-- User      : " + user.id)
+		if game.userX_id == user.id:
+			# Same player tried to join.
+			pass
+		elif not game.userO_id:
+			# Current user joins this game as the second player.
+			game.userO = user
+			game.userO_id = user.id
+			logging.info("User " + str(user) + " joins the game.")
+		elif (user.id != game.userO_id and user.id != game.userX_id):
+			raise aiohttp.web.HTTPForbidden(text="No observers yet.")
+
+	game_link = '/?g=' + game_key
+	if not original_game_key:
+		return aiohttp.web.HTTPFound(game_link)
+
+	#token = channel.create_channel(user.user_id())
+	token = "123"
+
+	returnable_games_html = ""
+	joinable_games_html = ""
+	observable_games_html = ""
+	# joinable_games_html = recent_games.joinable_html(game_key)
+	# if len(joinable_games_html) > 0:
+	# 	joinable_games_html = "Or join another available game below:<br />" + joinable_games_html
+	# observable_games_html = recent_games.observable_html(game_key)
+	# if len(observable_games_html) > 0:
+	# 	observable_games_html = "<p />Observe an existing game:<br />" + observable_games_html
+	# returnable_games_html = recent_games.returnable_html(game_key)
+	# if len(returnable_games_html) > 0:
+	# 	returnable_games_html = "<p />Return to your existing game:<br />" + returnable_games_html
+
+	# p = player.get(user.user_id(), user)
+	# top_list = player.TopPlayers()
+	template_values = {
+	    'token':
+	    token,
+	    'me':
+	    user,
+	    'game_key':
+	    game_key,
+	    'game_link':
+	    game_link,
+	    'initial_message':
+	    game_storage.GameUpdater(game).get_game_message(),
+	    'recent_games':
+	    returnable_games_html + "\n" + joinable_games_html + "\n" +
+	    observable_games_html,
+	    'rating':
+	    0,
+	    # 'top_players': top_list.html(),
+	    'top_players':
+	    "",
+	    'wins':
+	    0,
+	    'losses':
+	    0
+	}
+
+	return aiohttp.web.Response(
+	    text=index_template.render(**template_values),
+	    content_type="text/html")
+
+
+async def opened_handler(request):
+	user = auth.get_current_user(request)
+	game_key = request.query.get('g')
+	if not user or not game_key:
+		raise aiohttp.web.HTTPForbidden(text="Forbidden")
+	print("Opened:", user, game_key)
+	game = game_storage.get(game_key)
+	game_storage.GameUpdater(game).send_update()
+	return aiohttp.web.Response(text="OK")
+
+
+async def ping_handler(request):
+	user = auth.get_current_user(request)
+	game_key = request.query.get('g')
+	if not user or not game_key:
+		raise aiohttp.web.HTTPForbidden(text="Forbidden")
+	print("Ping:", user, game_key)
+	game = game_storage.get(game_key)
+	game_storage.GameUpdater(game).send_update()
+	return aiohttp.web.Response(text="OK")
+
+
+async def websocket_handler(request):
+	# Anyone can listen to updates for a game.game_key
+	key = request.query.get('g')
+	game = game_storage.get(key)
+	if not game:
+		raise aiohttp.web.HTTPNotFound(text="Game not found.")
+	print('Websocket connection starting')
+	ws = aiohttp.web.WebSocketResponse()
+	await ws.prepare(request)
+	print('Websocket connection ready')
+
+	game.observers.append(ws)
+
+	async for msg in ws:
+		print("Received", msg, "over websocket.")
+		if msg.type == aiohttp.WSMsgType.TEXT:
+			if msg.data == 'close':
+				await ws.close()
+
+	print('Websocket connection closed')
+	return ws
+
+
+def setup_loop(loop):
+	app = aiohttp.web.Application()
+	app.router.add_get('/', main_page)
+	app.router.add_get('/loginpage', login_page)
+	app.router.add_static('/game',
+	                      os.path.join(os.path.dirname(__file__), "game"))
+
+	app.router.add_post('/anonymous_login', auth.anonymous_login_handler)
+	app.router.add_post('/opened', opened_handler)
+	app.router.add_post('/ping', ping_handler)
+
+	app.router.add_route('GET', '/websocket', websocket_handler)
+
+	handler = app.make_handler()
+	web_server = loop.run_until_complete(
+	    loop.create_server(handler, '0.0.0.0', HTTP_PORT))
+
+	def every_second():
+		"""Useful for catching Ctrl+C on Windows."""
+		loop.call_later(1.0, every_second)
+
+	loop.call_soon(every_second)
+
+	def stop():
+		web_server.close()
+		loop.run_until_complete(web_server.wait_closed())
+		loop.run_until_complete(app.shutdown())
+		loop.run_until_complete(handler.shutdown(1.0))
+		loop.run_until_complete(app.cleanup())
+
+	return stop
+
+
+if __name__ == '__main__':
+	if len(sys.argv) < 2 or sys.argv[1] != "run":
+		print("Specify", sys.argv[0], " run to run.")
+		sys.exit(0)
+	loop = asyncio.get_event_loop()
+	stop = setup_loop(loop)
+	if os.name != "nt":
+		loop.add_signal_handler(signal.SIGTERM, loop.stop)
+
+	print("Server started.")
+	try:
+		loop.run_forever()
+	except KeyboardInterrupt:
+		print("KeyboardInterrupt.")
+		pass
+
+	stop()
+	loop.close()
+	print("Server closed.")

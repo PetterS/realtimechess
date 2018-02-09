@@ -1,0 +1,192 @@
+<html>  
+  <head>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+      <script src="/game/constants.min.js"></script>
+      <script type='text/javascript'>
+        GAME_KEY = '{{ game_key }}';
+        INITIAL_MESSAGE = '{{ initial_message|safe }}';
+        ME = '{{ me }}';
+        TOKEN = '{{ token }}';
+      </script>
+      <script src="/game/game.min.js"></script>
+
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+      <link rel="stylesheet" type="text/css" href="/game/game.css" />
+  </head>
+  <body>
+    <div id='display-area'>
+      <h2 id="headline">Real-time Chess</h2>
+
+      <div align="center">
+      <div class="beforeGame">
+      Your current rating is {{ rating }}, with {{ wins }} wins and {{ losses }} losses.
+      </div>
+      <div id='other-player' class="boxWidth">
+        <strong>Waiting for another player to join.</strong><br>
+        Send them this link to play:<br>
+        <div id='game-link' class="darkLinks"><a href='{{ game_link }}'>{{ game_link }}</a></div>
+        <div class="darkLinks">
+        {{ recent_games|safe }}
+        </div>
+      </div>
+      <div class="topPlayers beforeGame">
+        <h3>Top Players</h3>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Rating</th></tr>
+          </thead>
+          <tbody>
+            {{ top_players|safe }}
+          </tbody>
+        </table>
+      </div>
+      <div id="gameInformation">
+        Real-time Chess is like normal chess, but there are no turns! All pieces can be moved at any time, but there
+        is a small delay afterwards.
+        <p>
+          <a href="/logout">Logout</a>
+        </p>
+      </div>
+      </div>
+
+      <div class="piece squareSize" id="p0"></div>
+      <div class="piece squareSize" id="p1"></div>
+      <div class="piece squareSize" id="p2"></div>
+      <div class="piece squareSize" id="p3"></div>
+      <div class="piece squareSize" id="p4"></div>
+      <div class="piece squareSize" id="p5"></div>
+      <div class="piece squareSize" id="p6"></div>
+      <div class="piece squareSize" id="p7"></div>
+      <div class="piece squareSize" id="p8"></div>
+      <div class="piece squareSize" id="p9"></div>
+      <div class="piece squareSize" id="p10"></div>
+      <div class="piece squareSize" id="p11"></div>
+      <div class="piece squareSize" id="p12"></div>
+      <div class="piece squareSize" id="p13"></div>
+      <div class="piece squareSize" id="p14"></div>
+      <div class="piece squareSize" id="p15"></div>
+      <div class="piece squareSize" id="p16"></div>
+      <div class="piece squareSize" id="p17"></div>
+      <div class="piece squareSize" id="p18"></div>
+      <div class="piece squareSize" id="p19"></div>
+      <div class="piece squareSize" id="p20"></div>
+      <div class="piece squareSize" id="p21"></div>
+      <div class="piece squareSize" id="p22"></div>
+      <div class="piece squareSize" id="p23"></div>
+      <div class="piece squareSize" id="p24"></div>
+      <div class="piece squareSize" id="p25"></div>
+      <div class="piece squareSize" id="p26"></div>
+      <div class="piece squareSize" id="p27"></div>
+      <div class="piece squareSize" id="p28"></div>
+      <div class="piece squareSize" id="p29"></div>
+      <div class="piece squareSize" id="p30"></div>
+      <div class="piece squareSize" id="p31"></div>
+
+      
+
+      <div align="center">
+      <div id="controlPanel">
+        <button type="button" id="newGameButton" class="gameButton">Restart game</button>
+        <span id="isReady">
+          <button type="button" id="randomizePiecesButton" class="gameButton">Randomize first row</button>
+          <input type="checkbox" id="isReadyCheckBox" class="pointerCursor" />
+          <label class="pointerCursor" for="isReadyCheckBox">I am ready to start this game!</label>
+        </span>&nbsp;
+        <span id="topMessage"></span>
+      </div>
+      <table id="chess_board" cellpadding="0" cellspacing="0">
+        <tr>
+          <td id="A8" class="squareSize"></td>
+          <td id="B8" class="squareSize"></td>
+          <td id="C8" class="squareSize"></td>
+          <td id="D8" class="squareSize"></td>
+          <td id="E8" class="squareSize"></td>
+          <td id="F8" class="squareSize"></td>
+          <td id="G8" class="squareSize"></td>
+          <td id="H8" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A7" class="squareSize"></td>
+          <td id="B7" class="squareSize"></td>
+          <td id="C7" class="squareSize"></td>
+          <td id="D7" class="squareSize"></td>
+          <td id="E7" class="squareSize"></td>
+          <td id="F7" class="squareSize"></td>
+          <td id="G7" class="squareSize"></td>
+          <td id="H7" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A6" class="squareSize"></td>
+          <td id="B6" class="squareSize"></td>
+          <td id="C6" class="squareSize"></td>
+          <td id="D6" class="squareSize"></td>
+          <td id="E6" class="squareSize"></td>
+          <td id="F6" class="squareSize"></td>
+          <td id="G6" class="squareSize"></td>
+          <td id="H6" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A5" class="squareSize"></td>
+          <td id="B5" class="squareSize"></td>
+          <td id="C5" class="squareSize"></td>
+          <td id="D5" class="squareSize"></td>
+          <td id="E5" class="squareSize"></td>
+          <td id="F5" class="squareSize"></td>
+          <td id="G5" class="squareSize"></td>
+          <td id="H5" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A4" class="squareSize"></td>
+          <td id="B4" class="squareSize"></td>
+          <td id="C4" class="squareSize"></td>
+          <td id="D4" class="squareSize"></td>
+          <td id="E4" class="squareSize"></td>
+          <td id="F4" class="squareSize"></td>
+          <td id="G4" class="squareSize"></td>
+          <td id="H4" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A3" class="squareSize"></td>
+          <td id="B3" class="squareSize"></td>
+          <td id="C3" class="squareSize"></td>
+          <td id="D3" class="squareSize"></td>
+          <td id="E3" class="squareSize"></td>
+          <td id="F3" class="squareSize"></td>
+          <td id="G3" class="squareSize"></td>
+          <td id="H3" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A2" class="squareSize"></td>
+          <td id="B2" class="squareSize"></td>
+          <td id="C2" class="squareSize"></td>
+          <td id="D2" class="squareSize"></td>
+          <td id="E2" class="squareSize"></td>
+          <td id="F2" class="squareSize"></td>
+          <td id="G2" class="squareSize"></td>
+          <td id="H2" class="squareSize"></td>
+        </tr>
+        <tr>
+          <td id="A1" class="squareSize"></td>
+          <td id="B1" class="squareSize"></td>
+          <td id="C1" class="squareSize"></td>
+          <td id="D1" class="squareSize"></td>
+          <td id="E1" class="squareSize"></td>
+          <td id="F1" class="squareSize"></td>
+          <td id="G1" class="squareSize"></td>
+          <td id="H1" class="squareSize"></td>
+        </tr>
+      </table>
+      <div id="controlPanelBottom">
+        <span id="bottomMessage"></span>
+      </div>
+      <div id="ping">
+        <button type="button" id="pingbutton">Ping</button> <span id="pingresult"></span>
+      </div>
+      </div>
+
+      <div id='this-game' float='top'>
+        <!--Quick link to this game: <span id='this-game-link'><a href='{{ game_link }}'>{{ game_link }}</a></span><br />-->
+        <a href="/">Back to main page</a>
+      </div>
+  </body>
+</html>
