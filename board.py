@@ -57,9 +57,9 @@ class Board:
 		da = ta - fa
 		di = ti - fi
 		if da != 0:
-			da = da / abs(da)
+			da = int(da / abs(da))
 		if di != 0:
-			di = di / abs(di)
+			di = int(di / abs(di))
 
 		i = fi
 		a = fa
