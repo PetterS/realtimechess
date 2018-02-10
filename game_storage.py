@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 import logging
@@ -248,10 +249,12 @@ class GameUpdater:
 	def get_game_message(self, ping_tag=None):
 		return json.dumps(self.get_game_dict(ping_tag))
 
-	def send_update(self, ping_tag=None):
+	async def send_update(self, ping_tag=None):
 		message = self.get_game_message(ping_tag)
+		tasks = []
 		for ws in self.game.observers:
-			ws.send_str(message)
+			tasks.append(ws.send_str(message))
+		await asyncio.gather(*tasks)
 
 	def move(self, user, from_pos, to_pos):
 		logging.info("Request to move from " + from_pos + " to " + to_pos)
@@ -351,7 +354,7 @@ class GameUpdater:
 
 		self.game.put()
 
-	def set_ready(self, user_id, ready):
+	async def set_ready(self, user_id, ready):
 		logging.info("set_ready(): user_id      =" + user_id)
 		logging.info("set_ready(): userX.user_id=" + self.game.userX_id)
 		if self.game.userO is not None:
@@ -367,7 +370,7 @@ class GameUpdater:
 
 		if self.game.userO_ready and self.game.userX_ready:
 			self.game.state = STATE_PLAY
-			self.send_update()
+			await self.send_update()
 			logging.info("Both players ready. Starting.")
 
 		self.game.put()

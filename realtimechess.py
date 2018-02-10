@@ -142,7 +142,7 @@ async def move_handler(request):
 	if from_id and to_id:
 		updater = game_storage.GameUpdater(game)
 		if updater.move(user, from_id, to_id):
-			updater.send_update()
+			await updater.send_update()
 	else:
 		raise aiohttp.web.HTTPBadRequest(text="Need from and to IDs.")
 	return aiohttp.web.Response(text="OK")
@@ -168,7 +168,7 @@ async def newgame_handler(request):
 		game.userX_id = current_userX_id
 		game.userO_id = current_userO_id
 		game.observers = current_observers
-		game_storage.GameUpdater(game).send_update()
+		await game_storage.GameUpdater(game).send_update()
 	else:
 		raise aiohttp.web.HTTPForbidden(text="Modifying this game not allowed.")
 
@@ -179,7 +179,7 @@ async def newgame_handler(request):
 async def opened_handler(request):
 	user, game = user_and_game(request)
 	logging.info("Opened: %s %s.", user, game.key)
-	game_storage.GameUpdater(game).send_update()
+	await game_storage.GameUpdater(game).send_update()
 	return aiohttp.web.Response(text="OK")
 
 
@@ -187,7 +187,7 @@ async def opened_handler(request):
 async def ping_handler(request):
 	user, game = user_and_game(request)
 	logging.info("Ping: %s %s", user, game.key)
-	game_storage.GameUpdater(game).send_update()
+	await game_storage.GameUpdater(game).send_update()
 
 	if game.state == constants.STATE_GAMEOVER and not game.results_are_written:
 		if game.winner == constants.WHITE:
@@ -214,7 +214,7 @@ async def randomize_handler(request):
 	if current_userX_id == user.id or current_userO_id == user.id:
 		updater = game_storage.GameUpdater(game)
 		updater.randomize()
-		updater.send_update()
+		await updater.send_update()
 
 	return aiohttp.web.Response(text="OK")
 
@@ -227,7 +227,7 @@ async def ready_handler(request):
 	if ready is None:
 		return aiohttp.web.Response(text="OK")
 	logging.info("User %s ready: %s.", user, ready)
-	game_storage.GameUpdater(game).set_ready(user.id, ready)
+	await game_storage.GameUpdater(game).set_ready(user.id, ready)
 	return aiohttp.web.Response(text="OK")
 
 
