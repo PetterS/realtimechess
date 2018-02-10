@@ -3,6 +3,8 @@ In **Real-time Chess** (or [**Kung-Fu Chess**](https://en.wikipedia.org/wiki/Kun
 
 This repository contains a Python server that hosts real-time Chess games.
 
+![Screenshot](game/screenshot.png)
+
 ## Requirements
 Python 3.5+ and asyncio. 
 
