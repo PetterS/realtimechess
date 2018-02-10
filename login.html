@@ -1,5 +1,6 @@
 <html>  
   <head>
+      <title>&#9812;&#9813;</title>
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
       <script src="/game/constants.min.js"></script>
 
@@ -10,7 +11,7 @@
         #message {
           position:absolute;
           color: #000000;
-          background-color: #FFE000;
+          background-color: #fffbc6;
           border:2px solid #333;
           width:15vw;
           text-align: center;
@@ -212,6 +213,7 @@ $(window).load(function() {
   <body>
     <div id='display-area'>
       <h2 id="headline">Real-time Chess</h2>
+      <h3>a.k.a. Ninja Chess or <a href="https://en.wikipedia.org/wiki/Kung-Fu_Chess">Kung-Fu Chess</a></h3>
 
       <div class="piece squareSize" id="p0"></div>
       <div class="piece squareSize" id="p1"></div>
@@ -253,7 +255,7 @@ $(window).load(function() {
         Choose your name:
         <form action="anonymous_login" method="POST">
           <input type="hidden" name="destination" value="{{ destination }}" />
-          <input type="text" name="name" size=20 />&nbsp;&nbsp;<input type="submit" value="Login" class="gameButton" />
+          <input type="text" name="name" size=20 />&nbsp;&nbsp;<input type="submit" value="Create" class="gameButton" />
         </form>
       </div>
       <table id="chess_board" cellpadding="0" cellspacing="0">

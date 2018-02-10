@@ -116,10 +116,10 @@ async def main_page(request):
 	    'game_link': game_link,
 	    'initial_message': game_storage.GameUpdater(game).get_game_message(),
 	    'recent_games': recent_games,
-	    'rating': 0,
+	    'rating': user.rating,
 	    'top_players': top_list.html(),
-	    'wins': 0,
-	    'losses': 0
+	    'wins': user.wins,
+	    'losses': user.losses
 	}
 
 	return aiohttp.web.Response(
