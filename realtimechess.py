@@ -27,6 +27,15 @@ login_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'login.html')).read())
 
 
+def user_and_game(request):
+	user = auth.get_current_user(request)
+	game_key = request.query.get('g')
+	game = game_storage.get(game_key)
+	if not user or not game:
+		raise aiohttp.web.HTTPNotFound(text="No such game.")
+	return user, game
+
+
 async def login_page(request):
 	game_key = request.match_info.get('g')
 	if game_key is not None:
@@ -132,26 +141,46 @@ async def main_page(request):
 
 
 @auth.authenticated
+async def getstate_handler(request):
+	user, game = user_and_game(request)
+	json_data = game_storage.GameUpdater(game).get_game_message()
+	return aiohttp.web.Response(text=json_data)
+
+
+@auth.authenticated
+async def move_handler(request):
+	user, game = user_and_game(request)
+	from_id = request.query.get('from')
+	to_id = request.query.get('to')
+	if from_id and to_id:
+		updater = game_storage.GameUpdater(game)
+		if updater.move(user, from_id, to_id):
+			updater.send_update()
+
+
+@auth.authenticated
 async def opened_handler(request):
-	user = auth.get_current_user(request)
-	game_key = request.query.get('g')
-	if not user or not game_key:
-		raise aiohttp.web.HTTPForbidden(text="Forbidden")
-	print("Opened:", user, game_key)
-	game = game_storage.get(game_key)
+	user, game = user_and_game(request)
+	print("Opened:", user, game.key)
 	game_storage.GameUpdater(game).send_update()
 	return aiohttp.web.Response(text="OK")
 
 
 @auth.authenticated
 async def ping_handler(request):
-	user = auth.get_current_user(request)
-	game_key = request.query.get('g')
-	if not user or not game_key:
-		raise aiohttp.web.HTTPForbidden(text="Forbidden")
-	print("Ping:", user, game_key)
-	game = game_storage.get(game_key)
+	user, game = user_and_game(request)
+	print("Ping:", user, game.key)
 	game_storage.GameUpdater(game).send_update()
+	return aiohttp.web.Response(text="OK")
+
+
+@auth.authenticated
+async def ready_handler(request):
+	user, game = user_and_game(request)
+	data = await request.post()
+	ready = data.get("ready")
+	print("User", user, "ready:", ready, "data:", data)
+	game_storage.GameUpdater(game).set_ready(user.id, ready)
 	return aiohttp.web.Response(text="OK")
 
 
@@ -186,8 +215,11 @@ def setup_loop(loop):
 	                      os.path.join(os.path.dirname(__file__), "game"))
 
 	app.router.add_post('/anonymous_login', auth.anonymous_login_handler)
+	app.router.add_post('/getstate', getstate_handler)
+	app.router.add_post('/move', move_handler)
 	app.router.add_post('/opened', opened_handler)
 	app.router.add_post('/ping', ping_handler)
+	app.router.add_post('/ready', ready_handler)
 
 	app.router.add_route('GET', '/websocket', websocket_handler)
 
