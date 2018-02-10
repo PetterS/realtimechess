@@ -4,6 +4,7 @@ import logging
 import time
 import os
 
+import board
 from constants import *
 from protocol import Piece
 from util import HttpCodeException
@@ -263,9 +264,9 @@ class GameUpdater:
 			                str(self.game.state) + ".")
 			raise HttpCodeException(403)
 
-		if user.user_id() == self.game.userX_id:
+		if user.id == self.game.userX_id:
 			is_white = True
-		elif user.user_id() == self.game.userO_id:
+		elif user.id == self.game.userO_id:
 			is_white = False
 		else:
 			log_error(self.game,

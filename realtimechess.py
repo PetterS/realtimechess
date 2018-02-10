@@ -156,6 +156,9 @@ async def move_handler(request):
 		updater = game_storage.GameUpdater(game)
 		if updater.move(user, from_id, to_id):
 			updater.send_update()
+	else:
+		raise aiohttp.web.HTTPBadRequest(text="Need from and to IDs.")
+	return aiohttp.web.Response(text="OK")
 
 
 @auth.authenticated
@@ -207,6 +210,26 @@ async def websocket_handler(request):
 	return ws
 
 
+@auth.authenticated
+async def resetplayer_handler(request):
+	# TODO: Implement
+	return aiohttp.web.Response(text="OK")
+
+
+@auth.debug_authenticated
+async def setdebug_handler(request):
+	user, game = user_and_game(request)
+	data = await request.post()
+	debug = data.get("debug")
+	if debug is None or debug == "" or int(debug) == 1:
+		game.debug_no_time = True
+		print("Debug mode on for game ", game.key)
+	else:
+		game.debug_no_time = False
+		print("Debug mode off for game ", game.key)
+	return aiohttp.web.Response(text="OK")
+
+
 def setup_loop(loop):
 	app = aiohttp.web.Application()
 	app.router.add_get('/', main_page)
@@ -222,6 +245,11 @@ def setup_loop(loop):
 	app.router.add_post('/ready', ready_handler)
 
 	app.router.add_route('GET', '/websocket', websocket_handler)
+
+	# Only for debug
+	# app.router.add_post('/delete_user', auth.delete_user_handler)
+	app.router.add_post('/resetplayer', resetplayer_handler)
+	app.router.add_post('/setdebug', setdebug_handler)
 
 	handler = app.make_handler()
 	web_server = loop.run_until_complete(

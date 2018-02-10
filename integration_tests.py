@@ -48,8 +48,9 @@ class GameUser:
 		    "Cookie": self.cookie
 		}
 		encoded_params = urllib.parse.urlencode(params)
-		self.conn.request("POST", "/" + name + "?g=" + self.game,
-		                  encoded_params, headers)
+		self.conn.request(
+		    "POST", "/" + name + "?g=" + self.game + "&" + encoded_params,
+		    encoded_params, headers)
 		response = self.conn.getresponse()
 		data = response.read()
 

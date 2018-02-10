@@ -49,6 +49,10 @@ def authenticated(handler):
 	return call_handler_if_ok
 
 
+# TODO: Make secure.
+debug_authenticated = authenticated
+
+
 async def anonymous_login_handler(request):
 	data = await request.post()
 	print("LOGIN", data)
