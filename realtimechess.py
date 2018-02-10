@@ -1,15 +1,9 @@
 #!/usr/bin/python3
-# coding=utf-8
-# pylint: disable-msg=C6310
 
 import asyncio
-import datetime
 import json
 import logging
 import os
-import random
-import re
-import time
 import signal
 import sys
 

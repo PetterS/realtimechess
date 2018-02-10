@@ -68,7 +68,7 @@ class GameUser:
 		header["Cookie"] = self.cookie
 		self.conn.request("GET", "/", headers=header)
 		response = self.conn.getresponse()
-		data = response.read()
+		response.read()
 		if response.status != 302:
 			raise HttpCodeException(response.status)
 		location = response.getheader("Location")
@@ -125,7 +125,7 @@ class AnonymousUser(GameUser):
 		}
 		self.conn.request("POST", "/anonymous_login", encoded_params, headers)
 		response = self.conn.getresponse()
-		data = response.read()
+		response.read()
 		assert response.status < 400
 		self.cookie = response.getheader("Set-Cookie")
 
