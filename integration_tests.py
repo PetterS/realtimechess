@@ -536,6 +536,13 @@ class TestGame(unittest.TestCase):
 		self.user2.move("D7", "D6")
 		user3.close()
 
+	def test_new_game_check_finished(self):
+		self.user1.move("E2", "E3")
+		# Game is not finished.
+		with self.assertRaises(HttpCodeException) as cm:
+			self.user1.call("newgame")
+		self.assertEqual(403, cm.exception.code)
+
 
 class TestStart(unittest.TestCase):
 	@classmethod

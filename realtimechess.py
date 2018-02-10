@@ -151,13 +151,14 @@ async def move_handler(request):
 @auth.authenticated
 async def newgame_handler(request):
 	user, game = user_and_game(request)
+	if game.state != constants.STATE_GAMEOVER:
+		raise aiohttp.web.HTTPForbidden(text="Game is not finished.")
 
 	current_userX = game.userX
 	current_userO = game.userO
 	current_userX_id = game.userX_id
 	current_userO_id = game.userO_id
 	current_observers = game.observers
-	# TODO: Check that game is finished.
 	if current_userX == user or current_userO == user:
 		# Create a new game.
 		game, _ = game_storage.new(user, game.key)
@@ -168,6 +169,8 @@ async def newgame_handler(request):
 		game.userO_id = current_userO_id
 		game.observers = current_observers
 		game_storage.GameUpdater(game).send_update()
+	else:
+		raise aiohttp.web.HTTPForbidden(text="Modifying this game not allowed.")
 
 	return aiohttp.web.Response(text="OK")
 
