@@ -7,7 +7,7 @@ import os
 import board
 from constants import *
 from protocol import Piece
-from util import HttpCodeException
+from util import HttpCodeException, log_error
 
 games = {}
 
