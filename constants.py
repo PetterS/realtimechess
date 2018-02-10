@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 import re
 
 # The amount of time pieces have to wait before moving again.
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 		if match:
 			vars[match.group(1)] = match.group(2)
 
-	with open("constants.js", "w") as f:
+	with open("game/constants.min.js", "w") as f:
 		f.write("// Compiled from constants.py.\n\n")
-		for key, val in vars.iteritems():
+		for key, val in sorted(vars.items()):
 			f.write("var " + key + " = " + val + ";\n")
