@@ -309,8 +309,6 @@ class TestGame(unittest.TestCase):
 		                 self.user1.get_state().board().piece("H1").color)
 
 	def test_full_games(self):
-		self.user1.call("resetplayer")
-		self.user2.call("resetplayer")
 		self.assertEqual(1000, self.user1.rating())
 		self.assertEqual(1000, self.user2.rating())
 		self.assertEqual(0, self.user1.wins())
@@ -677,7 +675,6 @@ class TestAnonymous(unittest.TestCase):
 		self.user2.call("ready", {"ready": 1})
 		self.assertEqual(STATE_PLAY, self.user2.get_state().game_state())
 
-		self.user1.call("resetplayer")
 		self.assertEqual(1000, self.user1.rating())
 		user2_wins = self.user2.wins()
 		user2_losses = self.user2.losses()

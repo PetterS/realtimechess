@@ -22,6 +22,8 @@ login_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'login.html')).read())
 
 
+logging.getLogger().setLevel(logging.INFO)
+
 def user_and_game(request):
 	user = auth.get_current_user(request)
 	game_key = request.query.get('g')
@@ -60,7 +62,7 @@ async def main_page(request):
 	game_key = request.query.get('g')
 	original_game_key = game_key
 
-	print("Main page:", user, game_key)
+	logging.info("Main page: %s %s", user, game_key)
 
 	if not user:
 		if game_key is not None:
@@ -72,14 +74,14 @@ async def main_page(request):
 
 	if not game_key:
 		game, game_key = game_storage.new(user)
-		print("New game from " + str(user))
+		logging.info("New game from %s." + str(user))
 	else:
 		game = game_storage.get(game_key)
 		if not game:
 			raise aiohttp.web.HTTPNotFound(text="Game not found")
 
-		print("-- Game userX: " + game.userX_id)
-		print("-- User      : " + user.id)
+		logging.info("Game userX: %s." + game.userX_id)
+		logging.info("User      : %s." + user.id)
 		if game.userX_id == user.id:
 			# Same player tried to join.
 			pass
@@ -87,16 +89,13 @@ async def main_page(request):
 			# Current user joins this game as the second player.
 			game.userO = user
 			game.userO_id = user.id
-			logging.info("User " + str(user) + " joins the game.")
+			logging.info("User %s joins the game.", user)
 		elif (user.id != game.userO_id and user.id != game.userX_id):
-			print("Observer", user, "joined", game.key)
+			logging.info("Observer %s joined %s.", user, game.key)
 
 	game_link = '/?g=' + game_key
 	if not original_game_key:
 		return aiohttp.web.HTTPFound(game_link)
-
-	#token = channel.create_channel(user.user_id())
-	token = "123"
 
 	joinable_games_html = recent_games.joinable_html(game_key)
 	if len(joinable_games_html) > 0:
@@ -112,7 +111,6 @@ async def main_page(request):
 
 	top_list = auth.TopPlayers()
 	template_values = {
-	    'token': token,
 	    'me': user,
 	    'game_key': game_key,
 	    'game_link': game_link,
@@ -177,7 +175,7 @@ async def newgame_handler(request):
 @auth.authenticated
 async def opened_handler(request):
 	user, game = user_and_game(request)
-	print("Opened:", user, game.key)
+	logging.info("Opened: %s %s.", user, game.key)
 	game_storage.GameUpdater(game).send_update()
 	return aiohttp.web.Response(text="OK")
 
@@ -185,7 +183,7 @@ async def opened_handler(request):
 @auth.authenticated
 async def ping_handler(request):
 	user, game = user_and_game(request)
-	print("Ping:", user, game.key)
+	logging.info("Ping: %s %s", user, game.key)
 	game_storage.GameUpdater(game).send_update()
 
 	if game.state == constants.STATE_GAMEOVER and not game.results_are_written:
@@ -194,8 +192,8 @@ async def ping_handler(request):
 		else:
 			auth.change_ratings(game.userO, game.userX)
 
-		print("White player after update ", game.userX)
-		print("Black player after update ", game.userO)
+		logging.info("White player after update %s.", game.userX)
+		logging.info("Black player after update %s.", game.userO)
 
 		game.results_are_written = True
 		game.put()
@@ -225,38 +223,32 @@ async def ready_handler(request):
 	ready = request.query.get("ready")
 	if ready is None:
 		return aiohttp.web.Response(text="OK")
-	print("User", user, "ready:", ready)
+	logging.info("User %s ready: %s.", user, ready)
 	game_storage.GameUpdater(game).set_ready(user.id, ready)
 	return aiohttp.web.Response(text="OK")
 
 
 async def websocket_handler(request):
-	# Anyone can listen to updates for a game.game_key
+	# Anyone can listen to updates for a game.
 	key = request.query.get('g')
 	game = game_storage.get(key)
 	if not game:
 		raise aiohttp.web.HTTPNotFound(text="Game not found.")
-	print('Websocket connection starting')
+	logging.info('Websocket connection starting')
 	ws = aiohttp.web.WebSocketResponse()
 	await ws.prepare(request)
-	print('Websocket connection ready')
+	logging.info('Websocket connection ready')
 
 	game.observers.append(ws)
 
 	async for msg in ws:
-		print("Received", msg, "over websocket.")
+		logging.info("Received %s over websocket.", msg)
 		if msg.type == aiohttp.WSMsgType.TEXT:
 			if msg.data == 'close':
 				await ws.close()
 
-	print('Websocket connection closed')
+	logging.info('Websocket connection closed')
 	return ws
-
-
-@auth.authenticated
-async def resetplayer_handler(request):
-	# TODO: Implement
-	return aiohttp.web.Response(text="OK")
 
 
 @auth.debug_authenticated
@@ -266,10 +258,10 @@ async def setdebug_handler(request):
 	debug = data.get("debug")
 	if debug is None or debug == "" or int(debug) == 1:
 		game.debug_no_time = True
-		print("Debug mode on for game ", game.key)
+		logging.info("Debug mode on for game %s.", game.key)
 	else:
 		game.debug_no_time = False
-		print("Debug mode off for game ", game.key)
+		logging.info("Debug mode off for game %s.", game.key)
 	return aiohttp.web.Response(text="OK")
 
 
@@ -293,10 +285,9 @@ def setup_loop(loop):
 	app.router.add_route('GET', '/websocket', websocket_handler)
 
 	if auth.IS_UNSAFE_DEBUG:
-		app.router.add_post('/resetplayer', resetplayer_handler)
 		app.router.add_post('/setdebug', setdebug_handler)
 
-	handler = app.make_handler()
+	handler = app.make_handler(access_log=logging.getLogger())
 	web_server = loop.run_until_complete(
 	    loop.create_server(handler, '0.0.0.0', HTTP_PORT))
 
@@ -327,7 +318,7 @@ if __name__ == '__main__':
 	if os.name != "nt":
 		loop.add_signal_handler(signal.SIGTERM, loop.stop)
 
-	print("Server started.")
+	logging.info("Server started.")
 	try:
 		loop.run_forever()
 	except KeyboardInterrupt:
@@ -336,4 +327,4 @@ if __name__ == '__main__':
 
 	stop()
 	loop.close()
-	print("Server closed.")
+	logging.info("Server closed.")

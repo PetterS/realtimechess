@@ -1,6 +1,7 @@
 import aiohttp
 import base64
 import hashlib
+import logging
 import math
 import re
 
@@ -62,7 +63,7 @@ def get_current_user(request):
 	if p == password(name):
 		return users.get(name, None)
 	else:
-		print("Incorrect password for " + name)
+		logging.info("Incorrect password for %s.", name)
 		return None
 
 
@@ -87,7 +88,7 @@ def debug_authenticated(handler):
 
 async def anonymous_login_handler(request):
 	data = await request.post()
-	print("LOGIN", data)
+	logging.info("LOGIN %d", data)
 	name = data.get('name', None)
 	if name is None:
 		raise aiohttp.web.HTTPBadRequest(text="Need name.")
@@ -95,7 +96,7 @@ async def anonymous_login_handler(request):
 	if destination is None:
 		destination = "/"
 
-	# REquire A-Z for now.
+	# Require A-Z for now.
 	if len(name) > 20 or re.match("^[a-zA-Z0-9_-]+$", name) is None:
 		raise aiohttp.web.HTTPBadRequest(text="Invalid name.")
 
@@ -103,7 +104,7 @@ async def anonymous_login_handler(request):
 		raise aiohttp.web.HTTPUnauthorized(text="User already exists.")
 	users[name] = User(name, password(name))
 
-	print("Anonymous user: " + name)
+	logging.info("Anonymous user: %s.", name)
 
 	response = aiohttp.web.HTTPFound(destination)
 	response.set_cookie('name', name, expires=None, path='/')

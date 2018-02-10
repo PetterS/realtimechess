@@ -479,7 +479,6 @@ onMessage = function(m) {
 }
 
 openChannel = function() {
-  var token = TOKEN;
   var ws = new WebSocket("ws://" + location.host + "/websocket?&g=" + state.game_key);
   ws.onopen = function (event) {
     console.log("WebSocket open.", event);
