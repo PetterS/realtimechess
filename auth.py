@@ -4,7 +4,11 @@ import hashlib
 import math
 import re
 
-secret_key = b"Chess secret key that no one knows."
+# If set to True, will allow @debug_authenticated methods and
+# will overwrite users on anonymous requests.
+IS_UNSAFE_DEBUG = False
+
+SECRET_KEY = b"Chess secret key that no one knows."
 
 users = {}
 
@@ -45,7 +49,7 @@ def change_ratings(winner, loser):
 def password(name):
 	sha256 = hashlib.sha256()
 	sha256.update(name.encode("utf-8"))
-	sha256.update(secret_key)
+	sha256.update(SECRET_KEY)
 	return base64.b64encode(sha256.digest()).decode("ascii")
 
 
@@ -66,14 +70,19 @@ def authenticated(handler):
 	def call_handler_if_ok(request):
 		user = get_current_user(request)
 		if user is None:
-			aiohttp.web.HTTPForbidden(text="Not logged in.")
+			raise aiohttp.web.HTTPForbidden(text="Not logged in.")
 		return handler(request)
 
 	return call_handler_if_ok
 
 
-# TODO: Make secure.
-debug_authenticated = authenticated
+def debug_authenticated(handler):
+	def call_handler_if_ok(request):
+		if not IS_UNSAFE_DEBUG:
+			raise aiohttp.web.HTTPForbidden(text="No debug allowed.")
+		return handler(request)
+
+	return call_handler_if_ok
 
 
 async def anonymous_login_handler(request):
@@ -90,10 +99,8 @@ async def anonymous_login_handler(request):
 	if len(name) > 20 or re.match("^[a-zA-Z0-9_-]+$", name) is None:
 		raise aiohttp.web.HTTPBadRequest(text="Invalid name.")
 
-	if name in users:
-		pass
-		# TODO: Forbid this.
-		#raise aiohttp.web.HTTPUnauthorized(text="User already exists.")
+	if name in users and not IS_UNSAFE_DEBUG:
+		raise aiohttp.web.HTTPUnauthorized(text="User already exists.")
 	users[name] = User(name, password(name))
 
 	print("Anonymous user: " + name)

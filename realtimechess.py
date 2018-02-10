@@ -308,10 +308,9 @@ def setup_loop(loop):
 
 	app.router.add_route('GET', '/websocket', websocket_handler)
 
-	# Only for debug
-	# app.router.add_post('/delete_user', auth.delete_user_handler)
-	app.router.add_post('/resetplayer', resetplayer_handler)
-	app.router.add_post('/setdebug', setdebug_handler)
+	if auth.IS_UNSAFE_DEBUG:
+		app.router.add_post('/resetplayer', resetplayer_handler)
+		app.router.add_post('/setdebug', setdebug_handler)
 
 	handler = app.make_handler()
 	web_server = loop.run_until_complete(
@@ -334,9 +333,11 @@ def setup_loop(loop):
 
 
 if __name__ == '__main__':
-	if len(sys.argv) < 2 or sys.argv[1] != "run":
-		print("Specify", sys.argv[0], " run to run.")
+	if len(sys.argv) < 2 or (sys.argv[1] != "run" and sys.argv[1] != "debug"):
+		print("Specify", sys.argv[0], " run/debug to run.")
 		sys.exit(0)
+	if sys.argv[1] == "debug":
+		auth.IS_UNSAFE_DEBUG = True
 	loop = asyncio.get_event_loop()
 	stop = setup_loop(loop)
 	if os.name != "nt":
