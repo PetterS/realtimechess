@@ -38,7 +38,7 @@ async def getplayer_page(request):
 
 
 async def login_page(request):
-	game_key = request.match_info.get('g')
+	game_key = request.query.get('g')
 	if game_key is not None:
 		destination = "/?g=" + str(game_key)
 	else:
@@ -233,9 +233,11 @@ async def randomize_handler(request):
 @auth.authenticated
 async def ready_handler(request):
 	user, game = user_and_game(request)
-	data = await request.post()
-	ready = data.get("ready")
-	print("User", user, "ready:", ready, "data:", data)
+	await request.post()
+	ready = request.query.get("ready")
+	if ready is None:
+		return aiohttp.web.Response(text="OK")
+	print("User", user, "ready:", ready)
 	game_storage.GameUpdater(game).set_ready(user.id, ready)
 	return aiohttp.web.Response(text="OK")
 
