@@ -253,7 +253,8 @@ class GameUpdater:
 		message = self.get_game_message(ping_tag)
 		tasks = []
 		for ws in self.game.observers:
-			tasks.append(ws.send_str(message))
+			if not ws.closed:
+				tasks.append(ws.send_str(message))
 		await asyncio.gather(*tasks)
 
 	def move(self, user, from_pos, to_pos):
