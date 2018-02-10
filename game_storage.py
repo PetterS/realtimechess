@@ -12,10 +12,11 @@ from util import HttpCodeException, log_error
 games = {}
 
 
-def new(user):
+def new(user, key=None):
 	# Use this in Python 3.6+
 	# key = secrets.token_hex(128)
-	key = os.urandom(8).hex()
+	if not key:
+		key = os.urandom(8).hex()
 	game = Game(key)
 	game.userX_id = user.id
 	game.userX = user

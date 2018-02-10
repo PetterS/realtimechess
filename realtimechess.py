@@ -17,6 +17,7 @@ import aiohttp.web
 from jinja2 import Template
 
 import auth
+import constants
 import game_storage
 
 HTTP_PORT = 8080
@@ -148,6 +149,12 @@ async def getstate_handler(request):
 
 
 @auth.authenticated
+async def getplayer_handler(request):
+	user = auth.get_current_user(request)
+	return aiohttp.web.Response(text=json.dumps(user.to_dict()))
+
+
+@auth.authenticated
 async def move_handler(request):
 	user, game = user_and_game(request)
 	from_id = request.query.get('from')
@@ -158,6 +165,30 @@ async def move_handler(request):
 			updater.send_update()
 	else:
 		raise aiohttp.web.HTTPBadRequest(text="Need from and to IDs.")
+	return aiohttp.web.Response(text="OK")
+
+
+@auth.authenticated
+async def newgame_handler(request):
+	user, game = user_and_game(request)
+
+	current_userX = game.userX
+	current_userO = game.userO
+	current_userX_id = game.userX_id
+	current_userO_id = game.userO_id
+	current_observers = game.observers
+	# TODO: Check that game is finished.
+	if current_userX == user or current_userO == user:
+		# Create a new game.
+		game, _ = game_storage.new(user, game.key)
+		# Set properties.
+		game.userX = current_userX
+		game.userO = current_userO
+		game.userX_id = current_userX_id
+		game.userO_id = current_userO_id
+		game.observers = current_observers
+		game_storage.GameUpdater(game).send_update()
+
 	return aiohttp.web.Response(text="OK")
 
 
@@ -174,6 +205,19 @@ async def ping_handler(request):
 	user, game = user_and_game(request)
 	print("Ping:", user, game.key)
 	game_storage.GameUpdater(game).send_update()
+
+	if game.state == constants.STATE_GAMEOVER and not game.results_are_written:
+		if game.winner == constants.WHITE:
+			auth.change_ratings(game.userX, game.userO)
+		else:
+			auth.change_ratings(game.userO, game.userX)
+
+		print("White player after update ", game.userX)
+		print("Black player after update ", game.userO)
+
+		game.results_are_written = True
+		game.put()
+
 	return aiohttp.web.Response(text="OK")
 
 
@@ -233,6 +277,7 @@ async def setdebug_handler(request):
 def setup_loop(loop):
 	app = aiohttp.web.Application()
 	app.router.add_get('/', main_page)
+	app.router.add_get('/getplayer', getplayer_handler)
 	app.router.add_get('/loginpage', login_page)
 	app.router.add_static('/game',
 	                      os.path.join(os.path.dirname(__file__), "game"))
@@ -240,6 +285,7 @@ def setup_loop(loop):
 	app.router.add_post('/anonymous_login', auth.anonymous_login_handler)
 	app.router.add_post('/getstate', getstate_handler)
 	app.router.add_post('/move', move_handler)
+	app.router.add_post('/newgame', newgame_handler)
 	app.router.add_post('/opened', opened_handler)
 	app.router.add_post('/ping', ping_handler)
 	app.router.add_post('/ready', ready_handler)
