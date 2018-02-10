@@ -88,7 +88,7 @@ def debug_authenticated(handler):
 
 async def anonymous_login_handler(request):
 	data = await request.post()
-	logging.info("LOGIN %d", data)
+	logging.info("LOGIN %s", data)
 	name = data.get('name', None)
 	if name is None:
 		raise aiohttp.web.HTTPBadRequest(text="Need name.")
