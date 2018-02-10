@@ -375,8 +375,16 @@ class GameUpdater:
 
 class RecentGamesList:
 	def __init__(self, user, exclude_key=None):
+		too_old_games = []
+		for key, game in games.items():
+			if (game.creation_time <=
+			    datetime.datetime.now() - datetime.timedelta(minutes=60)):
+				too_old_games.append(key)
+		for key in too_old_games:
+			del games[key]
+
 		all_games = list(games.values())
-		all_games.sort(key=lambda g: g.creation_time)
+		all_games.sort(key=lambda g: g.creation_time, reverse=True)
 
 		self.joinable_games = []
 		self.observable_games = []
@@ -397,7 +405,7 @@ class RecentGamesList:
 			                                and game.userO_id == user.id):
 				# Do not offer to rejoin a game the player has been part of without
 				# anyone else.
-				if game.userO_id is not None:
+				if game.userO_id:
 					self.returnable_games.append((key, name))
 			elif not game.userO_id:
 				# This is a game created by someone else which no one

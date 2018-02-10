@@ -109,3 +109,19 @@ async def anonymous_login_handler(request):
 	response.set_cookie('name', name, expires=None, path='/')
 	response.set_cookie('password', password(name), expires=None, path='/')
 	return response
+
+
+class TopPlayers:
+	def __init__(self, limit=4):
+		top_players = list(users.values())
+		top_players.sort(key=lambda u: u.rating, reverse=True)
+
+		self.top_list = []
+		for user in top_players[:limit]:
+			self.top_list.append((user.name, user.rating))
+
+	def html(self):
+		text = ""
+		for name, rating in self.top_list:
+			text += """<tr><td>%s</td><td>%s</td></tr>\n""" % (name, rating)
+		return text

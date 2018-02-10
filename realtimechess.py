@@ -107,32 +107,21 @@ async def main_page(request):
 	returnable_games_html = recent_games.returnable_html(game_key)
 	if len(returnable_games_html) > 0:
 		returnable_games_html = "<p />Return to your existing game:<br />" + returnable_games_html
+	recent_games = (returnable_games_html + "\n" + joinable_games_html + "\n" +
+	                observable_games_html)
 
-	# p = player.get(user.user_id(), user)
-	# top_list = player.TopPlayers()
+	top_list = auth.TopPlayers()
 	template_values = {
-	    'token':
-	    token,
-	    'me':
-	    user,
-	    'game_key':
-	    game_key,
-	    'game_link':
-	    game_link,
-	    'initial_message':
-	    game_storage.GameUpdater(game).get_game_message(),
-	    'recent_games':
-	    returnable_games_html + "\n" + joinable_games_html + "\n" +
-	    observable_games_html,
-	    'rating':
-	    0,
-	    # 'top_players': top_list.html(),
-	    'top_players':
-	    "",
-	    'wins':
-	    0,
-	    'losses':
-	    0
+	    'token': token,
+	    'me': user,
+	    'game_key': game_key,
+	    'game_link': game_link,
+	    'initial_message': game_storage.GameUpdater(game).get_game_message(),
+	    'recent_games': recent_games,
+	    'rating': 0,
+	    'top_players': top_list.html(),
+	    'wins': 0,
+	    'losses': 0
 	}
 
 	return aiohttp.web.Response(
