@@ -87,7 +87,7 @@ async def main_page(request):
 			game.userO_id = user.id
 			logging.info("User " + str(user) + " joins the game.")
 		elif (user.id != game.userO_id and user.id != game.userX_id):
-			raise aiohttp.web.HTTPForbidden(text="No observers yet.")
+			print("Observer", user, "joined", game.key)
 
 	game_link = '/?g=' + game_key
 	if not original_game_key:
