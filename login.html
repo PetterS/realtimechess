@@ -251,10 +251,7 @@ $(window).load(function() {
 
       <div align="center">
       <div class="loginLink">
-        <a href="{{ login_link }}"><img src="game/btn_google_signin_dark_normal_web.png" /></a>
-      </div>
-      <div class="loginLink">
-        Or choose your name:
+        Choose your name:
         <form action="anonymous_login" method="POST">
           <input type="hidden" name="destination" value="{{ destination }}" />
           <input type="text" name="name" size=20 />&nbsp;&nbsp;<input type="submit" value="Login" class="gameButton" />
