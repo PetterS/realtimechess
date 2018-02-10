@@ -113,6 +113,7 @@ class AnonymousUser(GameUser):
 		self.email = name
 		self.server = server
 		self.port = port
+
 		self.GAME_ID_PATTERN = re.compile(
 		    re.escape("/?g=") + """([a-zA-Z0-9]+)""")
 
@@ -645,8 +646,6 @@ class TestAnonymous(unittest.TestCase):
 	@classmethod
 	def setUpClass(self):
 		self.user1 = AnonymousUser("integration-user4")
-		self.user1.call("delete_user", {"name": "Petter"})
-		self.user1.call("delete_user", {"name": "Gustav"})
 		self.user2 = AnonymousUser("Petter")
 		self.user3 = AnonymousUser("Gustav")
 

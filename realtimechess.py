@@ -37,6 +37,12 @@ def user_and_game(request):
 	return user, game
 
 
+@auth.authenticated
+async def getplayer_page(request):
+	user = auth.get_current_user(request)
+	return aiohttp.web.Response(text=json.dumps(user.to_dict()))
+
+
 async def login_page(request):
 	game_key = request.match_info.get('g')
 	if game_key is not None:
@@ -149,12 +155,6 @@ async def getstate_handler(request):
 
 
 @auth.authenticated
-async def getplayer_handler(request):
-	user = auth.get_current_user(request)
-	return aiohttp.web.Response(text=json.dumps(user.to_dict()))
-
-
-@auth.authenticated
 async def move_handler(request):
 	user, game = user_and_game(request)
 	from_id = request.query.get('from')
@@ -222,6 +222,21 @@ async def ping_handler(request):
 
 
 @auth.authenticated
+async def randomize_handler(request):
+	user, game = user_and_game(request)
+	await request.post()
+
+	current_userX_id = game.userX_id
+	current_userO_id = game.userO_id
+	if current_userX_id == user.id or current_userO_id == user.id:
+		updater = game_storage.GameUpdater(game)
+		updater.randomize()
+		updater.send_update()
+
+	return aiohttp.web.Response(text="OK")
+
+
+@auth.authenticated
 async def ready_handler(request):
 	user, game = user_and_game(request)
 	data = await request.post()
@@ -277,7 +292,7 @@ async def setdebug_handler(request):
 def setup_loop(loop):
 	app = aiohttp.web.Application()
 	app.router.add_get('/', main_page)
-	app.router.add_get('/getplayer', getplayer_handler)
+	app.router.add_get('/getplayer', getplayer_page)
 	app.router.add_get('/loginpage', login_page)
 	app.router.add_static('/game',
 	                      os.path.join(os.path.dirname(__file__), "game"))
@@ -288,6 +303,7 @@ def setup_loop(loop):
 	app.router.add_post('/newgame', newgame_handler)
 	app.router.add_post('/opened', opened_handler)
 	app.router.add_post('/ping', ping_handler)
+	app.router.add_post('/randomize', randomize_handler)
 	app.router.add_post('/ready', ready_handler)
 
 	app.router.add_route('GET', '/websocket', websocket_handler)
