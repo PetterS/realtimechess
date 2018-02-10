@@ -415,7 +415,7 @@ class TestGame(unittest.TestCase):
 		    "utf-8")
 		key1 = self.user1.game
 		self.assertIn(str(key1), front_page)
-		self.assertIn(str("Integration-user1"), front_page)
+		self.assertIn(str("integration-user1"), front_page)
 
 	def test_make_up_game_url(self):
 		with self.assertRaises(HttpCodeException) as cm:
