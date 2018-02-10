@@ -2,6 +2,7 @@
 In **Real-time Chess** (or [**Kung-Fu Chess**](https://en.wikipedia.org/wiki/Kung-Fu_Chess), **Ninja Chess**), all pieces can be moved simultaneously, but there is a short cool-down afterwards. This is a very fun multi-player game, completely different from regular chess!
 
 This repository contains a Python server that hosts real-time Chess games.
+There is a test server running intermittently at [chess.strandmark.net](https://chess.strandmark.net).
 
 ![Screenshot](game/screenshot.png)
 
