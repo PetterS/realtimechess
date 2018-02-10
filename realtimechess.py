@@ -68,6 +68,8 @@ async def main_page(request):
 		else:
 			return aiohttp.web.HTTPFound("/loginpage")
 
+	recent_games = game_storage.RecentGamesList(user, game_key)
+
 	if not game_key:
 		game, game_key = game_storage.new(user)
 		print("New game from " + str(user))
@@ -96,18 +98,15 @@ async def main_page(request):
 	#token = channel.create_channel(user.user_id())
 	token = "123"
 
-	returnable_games_html = ""
-	joinable_games_html = ""
-	observable_games_html = ""
-	# joinable_games_html = recent_games.joinable_html(game_key)
-	# if len(joinable_games_html) > 0:
-	# 	joinable_games_html = "Or join another available game below:<br />" + joinable_games_html
-	# observable_games_html = recent_games.observable_html(game_key)
-	# if len(observable_games_html) > 0:
-	# 	observable_games_html = "<p />Observe an existing game:<br />" + observable_games_html
-	# returnable_games_html = recent_games.returnable_html(game_key)
-	# if len(returnable_games_html) > 0:
-	# 	returnable_games_html = "<p />Return to your existing game:<br />" + returnable_games_html
+	joinable_games_html = recent_games.joinable_html(game_key)
+	if len(joinable_games_html) > 0:
+		joinable_games_html = "Or join another available game below:<br />" + joinable_games_html
+	observable_games_html = recent_games.observable_html(game_key)
+	if len(observable_games_html) > 0:
+		observable_games_html = "<p />Observe an existing game:<br />" + observable_games_html
+	returnable_games_html = recent_games.returnable_html(game_key)
+	if len(returnable_games_html) > 0:
+		returnable_games_html = "<p />Return to your existing game:<br />" + returnable_games_html
 
 	# p = player.get(user.user_id(), user)
 	# top_list = player.TopPlayers()

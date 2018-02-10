@@ -371,3 +371,57 @@ class GameUpdater:
 			logging.info("Both players ready. Starting.")
 
 		self.game.put()
+
+
+class RecentGamesList:
+	def __init__(self, user, exclude_key=None):
+		all_games = list(games.values())
+		all_games.sort(key=lambda g: g.creation_time)
+
+		self.joinable_games = []
+		self.observable_games = []
+		self.returnable_games = []
+
+		for game in all_games[:20]:
+			if game.creation_time <= datetime.datetime.now(
+			) - datetime.timedelta(minutes=2):
+				continue
+			key = game.key
+
+			if game.userO_id:
+				name = (game.userX.name + " vs. " + game.userO.name)
+			else:
+				name = game.userX.name
+
+			if game.userX_id == user.id or (game.userO is not None
+			                                and game.userO_id == user.id):
+				# Do not offer to rejoin a game the player has been part of without
+				# anyone else.
+				if game.userO_id is not None:
+					self.returnable_games.append((key, name))
+			elif not game.userO_id:
+				# This is a game created by someone else which no one
+				# has joined yet.
+				self.joinable_games.append((key, name))
+			else:
+				# This is a game with two other players.
+				self.observable_games.append((key, name))
+
+			logging.info("Found game " + name + " (" + key + ") created at " +
+			             str(game.creation_time) + ".")
+
+	def html(self, games, exclude=None):
+		text = ""
+		for key, name in games:
+			if key != exclude:
+				text += """<a href="/?g=%s">%s</a><br />\n""" % (key, name)
+		return text
+
+	def joinable_html(self, exclude=None):
+		return self.html(self.joinable_games, exclude)
+
+	def observable_html(self, exclude=None):
+		return self.html(self.observable_games, exclude)
+
+	def returnable_html(self, exclude=None):
+		return self.html(self.returnable_games, exclude)
