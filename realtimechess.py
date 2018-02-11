@@ -21,8 +21,8 @@ index_template = Template(
 login_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'login.html')).read())
 
-
 logging.getLogger().setLevel(logging.INFO)
+
 
 def user_and_game(request):
 	user = auth.get_current_user(request)
@@ -170,7 +170,8 @@ async def newgame_handler(request):
 		game.observers = current_observers
 		await game_storage.GameUpdater(game).send_update()
 	else:
-		raise aiohttp.web.HTTPForbidden(text="Modifying this game not allowed.")
+		raise aiohttp.web.HTTPForbidden(
+		    text="Modifying this game not allowed.")
 
 	return aiohttp.web.Response(text="OK")
 

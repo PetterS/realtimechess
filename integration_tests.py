@@ -19,16 +19,34 @@ class HttpCodeException(Exception):
 		return "HTTP error " + str(self.code)
 
 
-class GameUser:
-	def __init__(self, email, server="localhost", port=8080):
-		pass
+class AnonymousUser:
+	def __init__(self, name, server="localhost", port=8080):
+		self.email = name
+		self.server = server
+		self.port = port
+
+		self.GAME_ID_PATTERN = re.compile(
+		    re.escape("/?g=") + """([a-zA-Z0-9]+)""")
+
+		self.conn = http.client.HTTPConnection(self.server, self.port)
+		encoded_params = urllib.parse.urlencode({"name": name})
+		headers = {
+		    "Content-type": "application/x-www-form-urlencoded",
+		    "Accept": "text/plain"
+		}
+		self.conn.request("POST", "/anonymous_login", encoded_params, headers)
+		response = self.conn.getresponse()
+		response.read()
+		assert response.status < 400
+		self.cookie = response.getheader("Set-Cookie")
+
+		self.new_game()
 
 	def close(self):
 		self.conn.close()
 
 	def user_id(self):
-		match = self.ID_PATTERN.search(self.cookie)
-		return match.group(1)
+		return self.email
 
 	def request(self, path):
 		header = {}
@@ -106,33 +124,6 @@ class GameUser:
 		data = self.request("/getplayer")
 		map = json.loads(data.decode("utf-8"))
 		return int(map["losses"])
-
-
-class AnonymousUser(GameUser):
-	def __init__(self, name, server="localhost", port=8080):
-		self.email = name
-		self.server = server
-		self.port = port
-
-		self.GAME_ID_PATTERN = re.compile(
-		    re.escape("/?g=") + """([a-zA-Z0-9]+)""")
-
-		self.conn = http.client.HTTPConnection(self.server, self.port)
-		encoded_params = urllib.parse.urlencode({"name": name})
-		headers = {
-		    "Content-type": "application/x-www-form-urlencoded",
-		    "Accept": "text/plain"
-		}
-		self.conn.request("POST", "/anonymous_login", encoded_params, headers)
-		response = self.conn.getresponse()
-		response.read()
-		assert response.status < 400
-		self.cookie = response.getheader("Set-Cookie")
-
-		self.new_game()
-
-	def user_id(self):
-		return self.email
 
 
 class GameState:
@@ -645,60 +636,6 @@ class TestConcurrency(unittest.TestCase):
 		for i in range(N):
 			user1[i].close()
 			user2[i].close()
-
-
-class TestAnonymous(unittest.TestCase):
-	@classmethod
-	def setUpClass(self):
-		self.user1 = AnonymousUser("integration-user4")
-		self.user2 = AnonymousUser("Petter")
-		self.user3 = AnonymousUser("Gustav")
-
-	@classmethod
-	def tearDownClass(self):
-		self.user1.close()
-		self.user2.close()
-
-	def test_two_anon_players(self):
-		self.user2.new_game()
-		self.assertEqual(STATE_START, self.user2.get_state().game_state())
-		self.user3.join_game(self.user2)
-		self.assertEqual(STATE_START, self.user2.get_state().game_state())
-		self.user2.call("ready", {"ready": 1})
-		self.assertEqual(STATE_START, self.user2.get_state().game_state())
-		self.user3.call("ready", {"ready": 1})
-		self.assertEqual(STATE_PLAY, self.user3.get_state().game_state())
-
-	def test_join_anon_game(self):
-		self.user1.join_game(self.user2)
-
-	def test_full_game(self):
-		self.user1.new_game()
-		self.assertEqual(STATE_START, self.user1.get_state().game_state())
-		self.user2.join_game(self.user1)
-		self.assertEqual(STATE_START, self.user2.get_state().game_state())
-		self.user1.call("ready", {"ready": 1})
-		self.assertEqual(STATE_START, self.user2.get_state().game_state())
-		self.user2.call("ready", {"ready": 1})
-		self.assertEqual(STATE_PLAY, self.user2.get_state().game_state())
-
-		self.assertEqual(1000, self.user1.rating())
-		user2_wins = self.user2.wins()
-		user2_losses = self.user2.losses()
-
-		self.user1.disable_time()
-
-		self.user1.move("B1", "C3")
-		self.user1.move("C3", "D5")
-		self.user1.move("D5", "C7")
-		self.assertEqual(STATE_PLAY, self.user1.get_state().game_state())
-		self.user1.move("C7", "E8")
-		self.user1.call("ping")
-		self.assertEqual(STATE_GAMEOVER, self.user1.get_state().game_state())
-		self.assertEqual(1, self.user1.wins())
-		self.assertEqual(0, self.user1.losses())
-		self.assertEqual(user2_wins, self.user2.wins())
-		self.assertEqual(1 + user2_losses, self.user2.losses())
 
 
 if __name__ == '__main__':
