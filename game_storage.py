@@ -20,7 +20,6 @@ def new(user, key=None):
 	if not key:
 		key = os.urandom(8).hex()
 	game = Game(key)
-	game.userX_id = user.id
 	game.userX = user
 
 	games[key] = game
@@ -36,100 +35,19 @@ def get(key):
 
 
 class Game():
-	"""All the data we store for a game"""
+	"""All the data we store for a game.
 
-	def set_default(self, var, value):
-		if var not in dir(self) or getattr(self, var) is None:
-			setattr(self, var, value)
-
-	def get_pieces(self):
-		return self.all_piece_ids
-
-	def finish_move(self, piece_id, piece, current_time):
-
-		captured = False
-		for piece_id2 in self.get_pieces():
-			if piece_id2 != piece_id:
-				state = getattr(self, piece_id2)
-				if len(state) == 0:
-					continue
-				piece2 = Piece(state)
-
-				if piece.pos == piece2.pos:
-					if piece.color == piece2.color:
-						log_error(self,
-						          str(piece) + " and " + str(piece2) +
-						          " occupy the same square.")
-						raise HttpCodeException(500)
-
-					# Pieces occupy the same square. If the other piece is not
-					# moving, it is captured.
-
-					if not piece2.moving:
-						# The other piece is not moving. This case is easy.
-						assert (not captured)
-						self.capture(piece_id2, piece2)
-						captured = True
-
-					# Otherwise, we look to see if the other piece already has arrived.
-					elif piece2.end_time <= current_time:
-						assert (not captured)
-						captured = True
-						# The piece arriving first is captured.
-						if piece.end_time < piece2.end_time:
-							self.capture(piece_id, piece)
-						else:
-							self.capture(piece_id2, piece2)
-
-	def capture(self, piece_id, piece):
-		logging.info(str(piece) + " at " + piece.pos + " is captured.")
-		self.captured_positions_during_init.add(piece.pos)
-		if piece.type == KING:
-			self.game_ended_during_init = True
-		setattr(self, piece_id, "")
-
-	def finish_all_moves(self, current_time):
-		"""Performs all captures, but does not do any transitions to sleeping."""
-		for piece_id in self.get_pieces():
-			state = getattr(self, piece_id)
-			if len(state) == 0:
-				continue
-			piece = Piece(state)
-			if piece.moving:
-				if piece.end_time <= current_time:
-					self.finish_move(piece_id, piece, current_time)
-
-	def update_pieces(self, current_time):
-		"""Performs piece state transitions."""
-		for piece_id in self.get_pieces():
-			state = getattr(self, piece_id)
-			if len(state) == 0:
-				continue
-			piece = Piece(state)
-
-			if piece.moving:
-				if piece.end_time <= current_time:
-					piece.sleep()
-					setattr(self, piece_id, piece.state())
-			elif piece.sleeping:
-				if piece.end_time <= current_time:
-					piece.static()
-					setattr(self, piece_id, piece.state())
-
-	def put(self):
-		if self.state == STATE_PLAY or self.state == STATE_GAMEOVER:
-			self.seq += 1
+	The logic for computing valid moves etc. is handled by the Board class.
+	This makes the Game class easy to serialize, if needed. In a previous
+	version on App Engine, the Game was stored in a database.
+	"""
 
 	def __init__(self, key):
 		self.key = key
 
-		# These are only for deriving the name of the users.
+		# Which users are allowed to play this game.
 		self.userX = None
 		self.userO = None
-
-		# Which users are allowed to play this game.
-		self.userX_id = ""
-		self.userO_id = ""
 		# Users allowed to watch the game.
 		self.observers = []
 
@@ -187,109 +105,62 @@ class Game():
 		]
 		self.update()
 
-	def update(self):
-		self.captured_positions_during_init = set()
-		self.game_ended_during_init = False
-
-		# Update pieces two times to be able to move from moving → sleeping
-		# and then sleeping → normal.
-		current_time = time.time()
-		if self.debug_no_time:
-			# Advance time a lot to make all updates happen.
-			current_time += 365 * 24 * 60 * 60
-		self.finish_all_moves(current_time)
-		self.update_pieces(current_time)
-		self.update_pieces(current_time)
-
-		# Check to see if the kings are still around.
-		self.winner = None
-		if self.state != STATE_GAMEOVER:
-			whiteKing = self.p4
-			blackKing = self.p20
-
-			if whiteKing == "":
-				self.state = STATE_GAMEOVER
-				self.winner = BLACK
-			elif blackKing == "":
-				self.state = STATE_GAMEOVER
-				self.winner = WHITE
-
-
-class GameUpdater:
-	game = None
-
-	def __init__(self, game):
-		self.game = game
-
-	def get_game_dict(self, ping_tag=None):
-		gameUpdate = {
-		    'key': self.game.key,
-		    'userX': self.game.userX_id,
-		    'userXname': self.game.userX.name,
-		    'userXReady': self.game.userX_ready,
-		    'userO': '' if not self.game.userO_id else self.game.userO_id,
-		    'userOname': '' if not self.game.userO else self.game.userO.name,
-		    'userOReady': self.game.userO_ready,
-		    'seq': self.game.seq,
-		    'state': self.game.state,
+	def get_game_message(self, ping_tag=None):
+		game_update = {
+		    'key': self.key,
+		    'userX': self.userX.id,
+		    'userXname': self.userX.name,
+		    'userXReady': self.userX_ready,
+		    'userO': '' if not self.userO else self.userO.id,
+		    'userOname': '' if not self.userO else self.userO.name,
+		    'userOReady': self.userO_ready,
+		    'seq': self.seq,
+		    'state': self.state,
 		    'time_stamp': time.time()
 		}
 
-		if self.game.winner is not None:
-			gameUpdate["winner"] = self.game.winner
+		if self.winner is not None:
+			game_update["winner"] = self.winner
 
-		for piece in self.game.get_pieces():
-			gameUpdate[piece] = getattr(self.game, piece)
+		for piece in self._get_pieces():
+			game_update[piece] = getattr(self, piece)
 
 		if ping_tag is not None:
-			gameUpdate["ping_tag"] = ping_tag
+			game_update["ping_tag"] = ping_tag
 
-		return gameUpdate
-
-	def get_game_message(self, ping_tag=None):
-		return json.dumps(self.get_game_dict(ping_tag))
-
-	async def send_update(self, ping_tag=None):
-		message = self.get_game_message(ping_tag)
-		tasks = []
-		for ws in self.game.observers:
-			if not ws.closed:
-				tasks.append(ws.send_str(message))
-		await asyncio.gather(*tasks)
+		return json.dumps(game_update)
 
 	def move(self, user, from_pos, to_pos):
 		logging.info("Request to move from " + from_pos + " to " + to_pos)
 
-		if self.game.state == STATE_START:
-			log_error(
-			    self.game,
-			    "Game is in STATE_START. State=" + str(self.game.state) + ".")
+		if self.state == STATE_START:
+			log_error(self,
+			          "Game is in STATE_START. State=" + str(self.state) + ".")
 			raise HttpCodeException(403)
-		elif self.game.state != STATE_PLAY:
-			logging.warning("Game is not in STATE_PLAY. State=" +
-			                str(self.game.state) + ".")
+		elif self.state != STATE_PLAY:
+			logging.warning(
+			    "Game is not in STATE_PLAY. State=" + str(self.state) + ".")
 			raise HttpCodeException(403)
 
-		if user.id == self.game.userX_id:
+		if user.id == self.userX.id:
 			is_white = True
-		elif user.id == self.game.userO_id:
+		elif user.id == self.userO.id:
 			is_white = False
 		else:
-			log_error(self.game,
-			          "User not part of the game tried to move piece.")
+			log_error(self, "User not part of the game tried to move piece.")
 			raise HttpCodeException(403)
 
 		pieces = []
 		for i in range(32):
-			pieces.append(getattr(self.game, "p" + str(i)))
+			pieces.append(getattr(self, "p" + str(i)))
 		b = board.Board(pieces)
 
 		if not b.is_valid_position(from_pos):
-			log_error(self.game, str(from_pos) + " is not a valid position.")
+			log_error(self, str(from_pos) + " is not a valid position.")
 			raise HttpCodeException(400)
 
 		if not b.is_valid_position(to_pos):
-			log_error(self.game, str(to_pos) + " is not a valid position.")
+			log_error(self, str(to_pos) + " is not a valid position.")
 			raise HttpCodeException(400)
 
 		if not b.has_piece(from_pos):
@@ -310,71 +181,181 @@ class GameUpdater:
 			return False
 
 		pieces = [
-		    attr for attr in dir(self.game)
+		    attr for attr in dir(self)
 		    if not callable(attr) and re.match("p\\d\\d?", attr)
 		]
 		has_moved = False
 		for piece_id in pieces:
-			state = getattr(self.game, piece_id)
+			state = getattr(self, piece_id)
 			if len(state) == 0:
 				continue
 
 			piece = Piece(state)
 			if not piece.moving and piece.pos == from_pos:
 				piece.move(to_pos, time.time())
-				setattr(self.game, piece_id, piece.state())
+				setattr(self, piece_id, piece.state())
 				has_moved = True
 				logging.info("Moved " + str(piece) + " from " + from_pos +
 				             " to " + piece.pos)
 				break
 
-		assert (has_moved)
+		assert has_moved
 
-		self.game.put()
+		self.put()
 		return True
 
+	def put(self):
+		if self.state == STATE_PLAY or self.state == STATE_GAMEOVER:
+			self.seq += 1
+
 	def randomize(self):
-		if self.game.state != STATE_START:
-			log_error(self.game, "Can only randomize in STATE_START.")
+		if self.state != STATE_START:
+			log_error(self, "Can only randomize in STATE_START.")
 			raise HttpCodeException(403)
 
 		for i in range(8):
 			j = random.randint(i, 7)
 			if i != j:
-				p1 = Piece(getattr(self.game, "p" + str(i)))
-				p2 = Piece(getattr(self.game, "p" + str(j)))
+				p1 = Piece(getattr(self, "p" + str(i)))
+				p2 = Piece(getattr(self, "p" + str(j)))
 				p1.pos, p2.pos = p2.pos, p1.pos
-				setattr(self.game, "p" + str(i), p1.state())
-				setattr(self.game, "p" + str(j), p2.state())
+				setattr(self, "p" + str(i), p1.state())
+				setattr(self, "p" + str(j), p2.state())
 
-				p1 = Piece(getattr(self.game, "p" + str(16 + i)))
-				p2 = Piece(getattr(self.game, "p" + str(16 + j)))
+				p1 = Piece(getattr(self, "p" + str(16 + i)))
+				p2 = Piece(getattr(self, "p" + str(16 + j)))
 				p1.pos, p2.pos = p2.pos, p1.pos
-				setattr(self.game, "p" + str(16 + i), p1.state())
-				setattr(self.game, "p" + str(16 + j), p2.state())
+				setattr(self, "p" + str(16 + i), p1.state())
+				setattr(self, "p" + str(16 + j), p2.state())
 
-		self.game.put()
+		self.put()
+
+	async def send_update(self, ping_tag=None):
+		message = self.get_game_message(ping_tag)
+		tasks = []
+		for ws in self.observers:
+			if not ws.closed:
+				tasks.append(ws.send_str(message))
+		await asyncio.gather(*tasks)
 
 	async def set_ready(self, user_id, ready):
 		logging.info("set_ready(): user_id      =" + user_id)
-		logging.info("set_ready(): userX.user_id=" + self.game.userX_id)
-		if self.game.userO is not None:
-			logging.info("set_ready(): userO.user_id=" + self.game.userO_id)
+		logging.info("set_ready(): userX.user.id=" + self.userX.id)
+		if self.userO is not None:
+			logging.info("set_ready(): userO.user.id=" + self.userO.id)
 
-		if user_id == self.game.userX_id:
-			self.game.userX_ready = True if int(ready) else False
-		elif self.game.userO_id and user_id == self.game.userO_id:
-			self.game.userO_ready = True if int(ready) else False
+		if user_id == self.userX.id:
+			self.userX_ready = True if int(ready) else False
+		elif self.userO.id and user_id == self.userO.id:
+			self.userO_ready = True if int(ready) else False
 		else:
 			logging.warning("set_ready() from a player not in the game.")
 			return
 
-		if self.game.userO_ready and self.game.userX_ready:
-			self.game.state = STATE_PLAY
+		if self.userO_ready and self.userX_ready:
+			self.state = STATE_PLAY
 			await self.send_update()
 			logging.info("Both players ready. Starting.")
 
-		self.game.put()
+		self.put()
+
+	def update(self):
+		self.captured_positions_during_init = set()
+
+		# Update pieces two times to be able to move from moving → sleeping
+		# and then sleeping → normal.
+		current_time = time.time()
+		if self.debug_no_time:
+			# Advance time a lot to make all updates happen.
+			current_time += 365 * 24 * 60 * 60
+		self._finish_all_moves(current_time)
+		self._update_pieces(current_time)
+		self._update_pieces(current_time)
+
+		# Check to see if the kings are still around.
+		self.winner = None
+		if self.state != STATE_GAMEOVER:
+			whiteKing = self.p4
+			blackKing = self.p20
+
+			if whiteKing == "":
+				self.state = STATE_GAMEOVER
+				self.winner = BLACK
+			elif blackKing == "":
+				self.state = STATE_GAMEOVER
+				self.winner = WHITE
+
+	def _get_pieces(self):
+		return self.all_piece_ids
+
+	def _finish_move(self, piece_id, piece, current_time):
+
+		captured = False
+		for piece_id2 in self._get_pieces():
+			if piece_id2 != piece_id:
+				state = getattr(self, piece_id2)
+				if len(state) == 0:
+					continue
+				piece2 = Piece(state)
+
+				if piece.pos == piece2.pos:
+					if piece.color == piece2.color:
+						log_error(self,
+						          str(piece) + " and " + str(piece2) +
+						          " occupy the same square.")
+						raise HttpCodeException(500)
+
+					# Pieces occupy the same square. If the other piece is not
+					# moving, it is captured.
+
+					if not piece2.moving:
+						# The other piece is not moving. This case is easy.
+						assert not captured
+						self._capture(piece_id2, piece2)
+						captured = True
+
+					# Otherwise, we look to see if the other piece already has arrived.
+					elif piece2.end_time <= current_time:
+						assert not captured
+						captured = True
+						# The piece arriving first is captured.
+						if piece.end_time < piece2.end_time:
+							self._capture(piece_id, piece)
+						else:
+							self._capture(piece_id2, piece2)
+
+	def _capture(self, piece_id, piece):
+		logging.info(str(piece) + " at " + piece.pos + " is captured.")
+		self.captured_positions_during_init.add(piece.pos)
+		setattr(self, piece_id, "")
+
+	def _finish_all_moves(self, current_time):
+		"""Performs all captures, but does not do any transitions to sleeping."""
+		for piece_id in self._get_pieces():
+			state = getattr(self, piece_id)
+			if len(state) == 0:
+				continue
+			piece = Piece(state)
+			if piece.moving:
+				if piece.end_time <= current_time:
+					self._finish_move(piece_id, piece, current_time)
+
+	def _update_pieces(self, current_time):
+		"""Performs piece state transitions."""
+		for piece_id in self._get_pieces():
+			state = getattr(self, piece_id)
+			if len(state) == 0:
+				continue
+			piece = Piece(state)
+
+			if piece.moving:
+				if piece.end_time <= current_time:
+					piece.sleep()
+					setattr(self, piece_id, piece.state())
+			elif piece.sleeping:
+				if piece.end_time <= current_time:
+					piece.static()
+					setattr(self, piece_id, piece.state())
 
 
 class RecentGamesList:
@@ -400,18 +381,18 @@ class RecentGamesList:
 				continue
 			key = game.key
 
-			if game.userO_id:
+			if game.userO:
 				name = (game.userX.name + " vs. " + game.userO.name)
 			else:
 				name = game.userX.name
 
-			if game.userX_id == user.id or (game.userO is not None
-			                                and game.userO_id == user.id):
+			if game.userX.id == user.id or (game.userO is not None
+			                                and game.userO.id == user.id):
 				# Do not offer to rejoin a game the player has been part of without
 				# anyone else.
-				if game.userO_id:
+				if game.userO:
 					self.returnable_games.append((key, name))
-			elif not game.userO_id:
+			elif not game.userO:
 				# This is a game created by someone else which no one
 				# has joined yet.
 				self.joinable_games.append((key, name))

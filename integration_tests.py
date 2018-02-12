@@ -19,7 +19,7 @@ class HttpCodeException(Exception):
 		return "HTTP error " + str(self.code)
 
 
-class AnonymousUser:
+class User:
 	def __init__(self, name, server="localhost", port=8080):
 		self.email = name
 		self.server = server
@@ -180,8 +180,8 @@ class TestNotLoggedIn(unittest.TestCase):
 class TestGame(unittest.TestCase):
 	@classmethod
 	def setUpClass(self):
-		self.user1 = AnonymousUser("integration-user1")
-		self.user2 = AnonymousUser("integration-user2")
+		self.user1 = User("integration-user1")
+		self.user2 = User("integration-user2")
 
 	@classmethod
 	def tearDownClass(self):
@@ -516,7 +516,7 @@ class TestGame(unittest.TestCase):
 		self.assertEqual(WHITE, D7.color)
 
 	def test_third_player_joins(self):
-		user3 = AnonymousUser("integration-user3")
+		user3 = User("integration-user3")
 		user3.join_game(self.user1)
 
 		with self.assertRaises(HttpCodeException) as cm:
@@ -538,8 +538,8 @@ class TestGame(unittest.TestCase):
 class TestStart(unittest.TestCase):
 	@classmethod
 	def setUpClass(self):
-		self.user1 = AnonymousUser("integration-user4")
-		self.user2 = AnonymousUser("integration-user5")
+		self.user1 = User("integration-user4")
+		self.user2 = User("integration-user5")
 
 	@classmethod
 	def tearDownClass(self):
@@ -568,8 +568,8 @@ class TestConcurrency(unittest.TestCase):
 		user1 = []
 		user2 = []
 		for i in range(N):
-			user1.append(AnonymousUser("integration-user1"))
-			user2.append(AnonymousUser("integration-user2"))
+			user1.append(User("integration-user1"))
+			user2.append(User("integration-user2"))
 
 		for i in range(1, N):
 			user1[i].game = user1[0].game

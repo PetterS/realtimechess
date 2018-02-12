@@ -1,15 +1,21 @@
-import aiohttp
 import base64
 import hashlib
 import logging
 import math
+import os
 import re
+
+import aiohttp
 
 # If set to True, will allow @debug_authenticated methods and
 # will overwrite users on anonymous requests.
 IS_UNSAFE_DEBUG = False
 
-SECRET_KEY = b"Chess secret key that no one knows."
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if SECRET_KEY:
+	SECRET_KEY = SECRET_KEY.encode('utf-8')
+else:
+	SECRET_KEY = b"Chess secret key that no one knows."
 
 users = {}
 
@@ -33,6 +39,9 @@ class User:
 
 	def __str__(self):
 		return self.id
+
+	def __eq__(self, other):
+		return self.id == other.id
 
 
 def change_ratings(winner, loser):

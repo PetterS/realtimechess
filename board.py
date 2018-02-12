@@ -1,12 +1,4 @@
-#!/usr/bin/python2.7
-
-import logging
-import math
-import re
-
 from constants import *
-from protocol import MOVING_PATTERN, parseMovingPatternMatch
-from protocol import SLEEPING_PATTERN, parseSleepingPatternMatch
 from protocol import Piece, coord
 
 

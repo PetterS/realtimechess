@@ -80,17 +80,17 @@ async def main_page(request):
 		if not game:
 			raise aiohttp.web.HTTPNotFound(text="Game not found")
 
-		logging.info("Game userX: %s." + game.userX_id)
-		logging.info("User      : %s." + user.id)
-		if game.userX_id == user.id:
+		logging.info("Game userX: %s.", game.userX)
+		logging.info("User      : %s.", user.id)
+		if game.userX.id == user.id:
 			# Same player tried to join.
 			pass
-		elif not game.userO_id:
+		elif not game.userO:
 			# Current user joins this game as the second player.
 			game.userO = user
-			game.userO_id = user.id
+			game.userO.id = user.id
 			logging.info("User %s joins the game.", user)
-		elif (user.id != game.userO_id and user.id != game.userX_id):
+		elif (user.id != game.userO.id and user.id != game.userX.id):
 			logging.info("Observer %s joined %s.", user, game.key)
 
 	game_link = '/?g=' + game_key
@@ -114,7 +114,7 @@ async def main_page(request):
 	    'me': user,
 	    'game_key': game_key,
 	    'game_link': game_link,
-	    'initial_message': game_storage.GameUpdater(game).get_game_message(),
+	    'initial_message': game.get_game_message(),
 	    'recent_games': recent_games,
 	    'rating': user.rating,
 	    'top_players': top_list.html(),
@@ -130,7 +130,7 @@ async def main_page(request):
 @auth.authenticated
 async def getstate_handler(request):
 	user, game = user_and_game(request)
-	json_data = game_storage.GameUpdater(game).get_game_message()
+	json_data = game.get_game_message()
 	return aiohttp.web.Response(text=json_data)
 
 
@@ -140,9 +140,8 @@ async def move_handler(request):
 	from_id = request.query.get('from')
 	to_id = request.query.get('to')
 	if from_id and to_id:
-		updater = game_storage.GameUpdater(game)
-		if updater.move(user, from_id, to_id):
-			await updater.send_update()
+		if game.move(user, from_id, to_id):
+			await game.send_update()
 	else:
 		raise aiohttp.web.HTTPBadRequest(text="Need from and to IDs.")
 	return aiohttp.web.Response(text="OK")
@@ -154,21 +153,15 @@ async def newgame_handler(request):
 	if game.state != constants.STATE_GAMEOVER:
 		raise aiohttp.web.HTTPForbidden(text="Game is not finished.")
 
-	current_userX = game.userX
-	current_userO = game.userO
-	current_userX_id = game.userX_id
-	current_userO_id = game.userO_id
-	current_observers = game.observers
-	if current_userX == user or current_userO == user:
+	if game.userX == user or game.userO == user:
 		# Create a new game.
+		oldgame = game
 		game, _ = game_storage.new(user, game.key)
 		# Set properties.
-		game.userX = current_userX
-		game.userO = current_userO
-		game.userX_id = current_userX_id
-		game.userO_id = current_userO_id
-		game.observers = current_observers
-		await game_storage.GameUpdater(game).send_update()
+		game.userX = oldgame.userX
+		game.userO = oldgame.userO
+		game.observers = oldgame.observers
+		await game.send_update()
 	else:
 		raise aiohttp.web.HTTPForbidden(
 		    text="Modifying this game not allowed.")
@@ -180,7 +173,7 @@ async def newgame_handler(request):
 async def opened_handler(request):
 	user, game = user_and_game(request)
 	logging.info("Opened: %s %s.", user, game.key)
-	await game_storage.GameUpdater(game).send_update()
+	await game.send_update()
 	return aiohttp.web.Response(text="OK")
 
 
@@ -188,7 +181,7 @@ async def opened_handler(request):
 async def ping_handler(request):
 	user, game = user_and_game(request)
 	logging.info("Ping: %s %s", user, game.key)
-	await game_storage.GameUpdater(game).send_update()
+	await game.send_update()
 
 	if game.state == constants.STATE_GAMEOVER and not game.results_are_written:
 		if game.winner == constants.WHITE:
@@ -209,13 +202,9 @@ async def ping_handler(request):
 async def randomize_handler(request):
 	user, game = user_and_game(request)
 	await request.post()
-
-	current_userX_id = game.userX_id
-	current_userO_id = game.userO_id
-	if current_userX_id == user.id or current_userO_id == user.id:
-		updater = game_storage.GameUpdater(game)
-		updater.randomize()
-		await updater.send_update()
+	if user == game.userX or user == game.userO:
+		game.randomize()
+		await game.send_update()
 
 	return aiohttp.web.Response(text="OK")
 
@@ -228,7 +217,7 @@ async def ready_handler(request):
 	if ready is None:
 		return aiohttp.web.Response(text="OK")
 	logging.info("User %s ready: %s.", user, ready)
-	await game_storage.GameUpdater(game).set_ready(user.id, ready)
+	await game.set_ready(user.id, ready)
 	return aiohttp.web.Response(text="OK")
 
 

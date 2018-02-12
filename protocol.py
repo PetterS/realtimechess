@@ -1,6 +1,5 @@
 import math
 import re
-import time
 
 from constants import *
 
@@ -8,8 +7,7 @@ MOVING_PATTERN = re.compile(r"M,(\d+\.?\d*),([A-H][1-8])")
 
 
 def parseMovingPatternMatch(match):
-	assert (match is not None)
-
+	assert match is not None
 	end_time, pos = float(match.group(1)), match.group(2)
 	return end_time, pos
 
@@ -22,8 +20,7 @@ SLEEPING_PATTERN = re.compile(r"S,(\d+\.?\d*),([A-H][1-8])")
 
 
 def parseSleepingPatternMatch(match):
-	assert (match is not None)
-
+	assert match is not None
 	end_time, pos = float(match.group(1)), match.group(2)
 	return end_time, pos
 
