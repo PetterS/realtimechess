@@ -24,7 +24,7 @@ index_template = Template(
 login_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'login.html')).read())
 
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.WARNING)
 
 
 def user_and_game(request):
