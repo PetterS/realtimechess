@@ -122,7 +122,7 @@ class Game():
 		if self.winner is not None:
 			game_update["winner"] = self.winner
 
-		for piece in self._get_pieces():
+		for piece in self.all_piece_ids:
 			game_update[piece] = getattr(self, piece)
 
 		if ping_tag is not None:
@@ -151,8 +151,8 @@ class Game():
 			raise HttpCodeException(403)
 
 		pieces = []
-		for i in range(32):
-			pieces.append(getattr(self, "p" + str(i)))
+		for price_id in self.all_piece_ids:
+			pieces.append(getattr(self, price_id))
 		b = board.Board(pieces)
 
 		if not b.is_valid_position(from_pos):
@@ -174,18 +174,14 @@ class Game():
 			raise HttpCodeException(403)
 
 		if not b.is_valid_move(from_pos, to_pos):
-			logging.warning("Not valid token move " + b.piece_name(from_pos) +
+			logging.warning("Not valid to move " + b.piece_name(from_pos) +
 			                " from " + from_pos + " to " + to_pos)
 			# We don't return an error here because this happens all the time when the
 			# users click in the game.
 			return False
 
-		pieces = [
-		    attr for attr in dir(self)
-		    if not callable(attr) and re.match("p\\d\\d?", attr)
-		]
 		has_moved = False
-		for piece_id in pieces:
+		for piece_id in self.all_piece_ids:
 			state = getattr(self, piece_id)
 			if len(state) == 0:
 				continue
@@ -285,13 +281,10 @@ class Game():
 				self.state = STATE_GAMEOVER
 				self.winner = WHITE
 
-	def _get_pieces(self):
-		return self.all_piece_ids
-
 	def _finish_move(self, piece_id, piece, current_time):
 
 		captured = False
-		for piece_id2 in self._get_pieces():
+		for piece_id2 in self.all_piece_ids:
 			if piece_id2 != piece_id:
 				state = getattr(self, piece_id2)
 				if len(state) == 0:
@@ -331,7 +324,7 @@ class Game():
 
 	def _finish_all_moves(self, current_time):
 		"""Performs all captures, but does not do any transitions to sleeping."""
-		for piece_id in self._get_pieces():
+		for piece_id in self.all_piece_ids:
 			state = getattr(self, piece_id)
 			if len(state) == 0:
 				continue
@@ -342,7 +335,7 @@ class Game():
 
 	def _update_pieces(self, current_time):
 		"""Performs piece state transitions."""
-		for piece_id in self._get_pieces():
+		for piece_id in self.all_piece_ids:
 			state = getattr(self, piece_id)
 			if len(state) == 0:
 				continue

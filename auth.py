@@ -56,7 +56,7 @@ def change_ratings(winner, loser):
 	loser.losses += 1
 
 
-def password(name):
+def _password(name):
 	sha256 = hashlib.sha256()
 	sha256.update(name.encode("utf-8"))
 	sha256.update(SECRET_KEY)
@@ -69,7 +69,7 @@ def get_current_user(request):
 		return None
 
 	p = request.cookies.get("password")
-	if p == password(name):
+	if p == _password(name):
 		return users.get(name, None)
 	else:
 		logging.info("Incorrect password for %s.", name)
@@ -111,13 +111,13 @@ async def anonymous_login_handler(request):
 
 	if name in users and not IS_UNSAFE_DEBUG:
 		raise aiohttp.web.HTTPUnauthorized(text="User already exists.")
-	users[name] = User(name, password(name))
+	users[name] = User(name, _password(name))
 
 	logging.info("Anonymous user: %s.", name)
 
 	response = aiohttp.web.HTTPFound(destination)
 	response.set_cookie('name', name, expires=None, path='/')
-	response.set_cookie('password', password(name), expires=None, path='/')
+	response.set_cookie('password', _password(name), expires=None, path='/')
 	return response
 
 

@@ -9,6 +9,7 @@ import os
 import pstats
 import signal
 import sys
+import urllib.parse
 
 import aiohttp.web
 from jinja2 import Template
@@ -16,6 +17,7 @@ from jinja2 import Template
 import auth
 import constants
 import game_storage
+import util
 
 HTTP_PORT = 8080
 
@@ -149,6 +151,19 @@ async def move_handler(request):
 		raise aiohttp.web.HTTPBadRequest(text="Need from and to IDs.")
 	return aiohttp.web.Response(text="OK")
 
+async def move_websocket_handler(user, game, query):
+	from_id = query.get('from')
+	to_id = query.get('to')
+	if from_id and to_id:
+		res = False
+		try:
+			res = game.move(user, from_id[0], to_id[0])
+		except util.HttpCodeException as ex:
+			# We can not return a code because we need the socket
+			# to stay open.
+			pass
+		if res:
+			await game.send_update()
 
 @auth.authenticated
 async def newgame_handler(request):
@@ -230,6 +245,7 @@ async def websocket_handler(request):
 	game = game_storage.get(key)
 	if not game:
 		raise aiohttp.web.HTTPNotFound(text="Game not found.")
+	user = auth.get_current_user(request)
 	logging.info('Websocket connection starting')
 	ws = aiohttp.web.WebSocketResponse()
 	await ws.prepare(request)
@@ -240,8 +256,15 @@ async def websocket_handler(request):
 	async for msg in ws:
 		logging.info("Received %s over websocket.", msg)
 		if msg.type == aiohttp.WSMsgType.TEXT:
-			if msg.data == 'close':
+			url = urllib.parse.urlparse(msg.data)
+			query = urllib.parse.parse_qs(url.query)
+			if user and url.path == '/move':
+				await move_websocket_handler(user, game, query)
+			elif url.path == '/close':
 				await ws.close()
+			else:
+				logging.error("Invalid Websocket command: %s %s %s.", user, url, query)
+
 
 	logging.info('Websocket connection closed')
 	return ws
@@ -317,6 +340,7 @@ if __name__ == '__main__':
 		loop.add_signal_handler(signal.SIGTERM, loop.stop)
 
 	logging.info("Server started.")
+	print("Server started.")
 	if use_profiling:
 		pr = cProfile.Profile()
 		pr.enable()
