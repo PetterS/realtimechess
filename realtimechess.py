@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 
 import asyncio
+import cProfile
+import io
 import json
 import logging
 import os
+import pstats
 import signal
 import sys
 
@@ -301,6 +304,8 @@ def setup_loop(loop):
 
 
 if __name__ == '__main__':
+	use_profiling = False
+
 	if len(sys.argv) < 2 or (sys.argv[1] != "run" and sys.argv[1] != "debug"):
 		print("Specify", sys.argv[0], " run/debug to run.")
 		sys.exit(0)
@@ -312,11 +317,22 @@ if __name__ == '__main__':
 		loop.add_signal_handler(signal.SIGTERM, loop.stop)
 
 	logging.info("Server started.")
+	if use_profiling:
+		pr = cProfile.Profile()
+		pr.enable()
 	try:
 		loop.run_forever()
 	except KeyboardInterrupt:
 		print("KeyboardInterrupt.")
 		pass
+	if use_profiling:
+		pr.disable()
+		s = io.StringIO()
+		sortby = 'cumulative'
+		ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+		# This file can be visualized nicely with
+		#  $  gprof2dot -f pstats cProfile.log | dot -Tpdf > cProfile.pdf
+		ps.dump_stats('cProfile.log')
 
 	stop()
 	loop.close()
