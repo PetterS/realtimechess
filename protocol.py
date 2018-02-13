@@ -50,6 +50,10 @@ def coord(s):
 	return letter, number
 
 
+def pos(a, i):
+	return chr(a + ord('A')) + str(i + 1)
+
+
 def distance(from_pos, to_pos):
 	fa, fi = coord(from_pos)
 	ta, ti = coord(to_pos)
