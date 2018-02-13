@@ -534,6 +534,9 @@ class TestGame(unittest.TestCase):
 			self.user1.call("newgame")
 		self.assertEqual(403, cm.exception.code)
 
+	def test_error(self):
+		self.user1.call("error")
+
 
 class TestStart(unittest.TestCase):
 	@classmethod

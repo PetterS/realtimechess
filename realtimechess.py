@@ -133,6 +133,14 @@ async def main_page(request):
 
 
 @auth.authenticated
+async def error_handler(request):
+	user, game = user_and_game(request)
+	data = await request.post()
+	logging.error("JavaScript error: %s %s %s.", user, request.query, data)
+	return aiohttp.web.Response(text="OK")
+
+
+@auth.authenticated
 async def getstate_handler(request):
 	user, game = user_and_game(request)
 	json_data = game.get_game_message()
@@ -295,6 +303,7 @@ def setup_loop(loop):
 	                      os.path.join(os.path.dirname(__file__), "game"))
 
 	app.router.add_post('/anonymous_login', auth.anonymous_login_handler)
+	app.router.add_post('/error', error_handler)
 	app.router.add_post('/getstate', getstate_handler)
 	app.router.add_post('/move', move_handler)
 	app.router.add_post('/newgame', newgame_handler)
