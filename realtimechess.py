@@ -151,6 +151,7 @@ async def move_handler(request):
 		raise aiohttp.web.HTTPBadRequest(text="Need from and to IDs.")
 	return aiohttp.web.Response(text="OK")
 
+
 async def move_websocket_handler(user, game, query):
 	from_id = query.get('from')
 	to_id = query.get('to')
@@ -164,6 +165,7 @@ async def move_websocket_handler(user, game, query):
 			pass
 		if res:
 			await game.send_update()
+
 
 @auth.authenticated
 async def newgame_handler(request):
@@ -263,8 +265,8 @@ async def websocket_handler(request):
 			elif url.path == '/close':
 				await ws.close()
 			else:
-				logging.error("Invalid Websocket command: %s %s %s.", user, url, query)
-
+				logging.error("Invalid Websocket command: %s %s %s.", user,
+				              url, query)
 
 	logging.info('Websocket connection closed')
 	return ws
@@ -334,6 +336,7 @@ if __name__ == '__main__':
 		sys.exit(0)
 	if sys.argv[1] == "debug":
 		auth.IS_UNSAFE_DEBUG = True
+		logging.getLogger().setLevel(logging.INFO)
 	loop = asyncio.get_event_loop()
 	stop = setup_loop(loop)
 	if os.name != "nt":
