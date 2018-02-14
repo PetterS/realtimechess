@@ -72,7 +72,16 @@ def get_current_user(request):
 
 	p = request.cookies.get("password")
 	if p == _password(name):
-		return users.get(name, None)
+		user = users.get(name, None)
+		if user is None:
+			# Valid login, but we do not know this user. Must have
+			# forgotten about them. Better create the user and
+			# pretend it didn't happen.
+			user = User(name, _password(name))
+			users[name] = user
+			logging.warning("User %s logged in but not found. Recreated.",
+			                name)
+		return user
 	else:
 		logging.info("Incorrect password for %s.", name)
 		return None
