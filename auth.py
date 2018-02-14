@@ -17,6 +17,8 @@ if SECRET_KEY:
 else:
 	SECRET_KEY = b"Chess secret key that no one knows."
 
+LONG_TIME_IN_SECONDS = 10 * 365 * 24 * 60 * 60
+
 users = {}
 
 
@@ -116,8 +118,9 @@ async def anonymous_login_handler(request):
 	logging.info("Anonymous user: %s.", name)
 
 	response = aiohttp.web.HTTPFound(destination)
-	response.set_cookie('name', name, expires=None, path='/')
-	response.set_cookie('password', _password(name), expires=None, path='/')
+	response.set_cookie('name', name, max_age=LONG_TIME_IN_SECONDS, path='/')
+	response.set_cookie(
+	    'password', _password(name), max_age=LONG_TIME_IN_SECONDS, path='/')
 	return response
 
 
