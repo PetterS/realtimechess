@@ -83,7 +83,7 @@ def get_current_user(request):
 			                name)
 		return user
 	else:
-		logging.info("Incorrect password for %s.", name)
+		logging.error("Incorrect password for %s.", name)
 		return None
 
 
