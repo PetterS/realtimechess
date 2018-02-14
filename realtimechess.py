@@ -25,6 +25,8 @@ index_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'index.html')).read())
 login_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'login.html')).read())
+error_template = Template(
+    open(os.path.join(os.path.dirname(__file__), 'error.html')).read())
 
 logging.getLogger().setLevel(logging.WARNING)
 
@@ -36,6 +38,19 @@ def user_and_game(request):
 	if not user or not game:
 		raise aiohttp.web.HTTPNotFound(text="No such game.")
 	return user, game
+
+
+def error_response(status, message):
+	html = error_template.render({"status": status, "message": message})
+	return aiohttp.web.Response(
+	    status=status, text=html, content_type="text/html")
+
+
+async def anonymous_login_handler(request):
+	try:
+		return await auth.anonymous_login_handler(request)
+	except aiohttp.web.HTTPException as ex:
+		return error_response(ex.status, ex.text)
 
 
 @auth.authenticated
@@ -83,7 +98,7 @@ async def main_page(request):
 	else:
 		game = game_storage.get(game_key)
 		if not game:
-			raise aiohttp.web.HTTPNotFound(text="Game not found")
+			return error_response(404, "Game not found")
 
 		logging.info("Game userX: %s.", game.userX)
 		logging.info("User      : %s.", user.id)
@@ -302,7 +317,7 @@ def setup_loop(loop):
 	app.router.add_static('/game',
 	                      os.path.join(os.path.dirname(__file__), "game"))
 
-	app.router.add_post('/anonymous_login', auth.anonymous_login_handler)
+	app.router.add_post('/anonymous_login', anonymous_login_handler)
 	app.router.add_post('/error', error_handler)
 	app.router.add_post('/getstate', getstate_handler)
 	app.router.add_post('/move', move_handler)

@@ -117,7 +117,7 @@ async def anonymous_login_handler(request):
 		destination = "/"
 
 	# Require A-Z for now.
-	if len(name) > 20 or re.match("^[a-zA-Z0-9_-]+$", name) is None:
+	if len(name) > 20 or re.match(r"^[\sa-zA-Z0-9_-]+$", name) is None:
 		raise aiohttp.web.HTTPBadRequest(text="Invalid name.")
 
 	if name in users and not IS_UNSAFE_DEBUG:
