@@ -179,12 +179,15 @@ async def move_websocket_handler(user, game, query):
 	from_id = query.get('from')
 	to_id = query.get('to')
 	if from_id and to_id:
+		# Update the game to resolve the moving pieces.
+		game.update()
 		res = False
 		try:
 			res = game.move(user, from_id[0], to_id[0])
 		except util.HttpCodeException as ex:
 			# We can not return a code because we need the socket
 			# to stay open.
+			logging.warning("Move error: %s %s.", ex.status, ex.text)
 			pass
 		if res:
 			await game.send_update()
