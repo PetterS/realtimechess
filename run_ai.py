@@ -30,6 +30,7 @@ class AiPlayer:
 			self.all_piece_ids.append("p" + str(i))
 
 		self.my_pieces = []
+		self.last_update_timestamp = 0
 		self.board = None
 
 	async def connect(self):
@@ -61,17 +62,27 @@ class AiPlayer:
 					data = json.loads(msg.data)
 					self.state = int(data["state"])
 
-					pieces = []
+					self.pieces = []
+					pieces_str = []
 					for id in self.all_piece_ids:
-						pieces.append(data[id])
-					self.board = board.Board(pieces)
+						pieces_str.append(data[id])
+						if data[id]:
+							self.pieces.append(protocol.Piece(data[id]))
+					self.board = board.Board(pieces_str)
 
+					self.last_update_timestamp = float(data["time_stamp"])
+					something_happens_at = 1e100
 					self.my_pieces = []
-					for a in range(8):
-						for i in range(8):
-							s = self.board.state[a][i]
-							if s is not None and s.color == self.my_color:
-								self.my_pieces.append((a, i))
+					for piece in self.pieces:
+						if piece is not None and piece.color == self.my_color:
+							self.my_pieces.append(piece)
+							if piece.moving or piece.sleeping:
+								something_happens_at = min(
+								    something_happens_at, piece.end_time)
+					if something_happens_at < 1e100:
+						asyncio.ensure_future(
+						    self._call_at(something_happens_at + 0.05, "ping"),
+						    loop=self.loop)
 
 					print(":", end="", flush=True)
 				elif msg.type == aiohttp.WSMsgType.CLOSED:
@@ -80,6 +91,12 @@ class AiPlayer:
 				elif msg.type == aiohttp.WSMsgType.ERROR:
 					print("Websocket error.")
 					break
+
+	async def _call_at(self, timestamp, name, params={}):
+		delay = timestamp - self.last_update_timestamp
+		await asyncio.sleep(delay)
+		if timestamp > self.last_update_timestamp:
+			await self._call(name, params)
 
 	async def _call(self, name, params={}):
 		encoded_params = urllib.parse.urlencode(params)
@@ -104,13 +121,10 @@ class AiPlayer:
 			return
 
 		tasks = []
-		for from_a, from_i in self.my_pieces:
-			to_a = from_a + random.randint(-1, 1)
-			to_i = from_i + random.randint(-1, 1)
-			frm = protocol.pos(from_a, from_i)
-			to = protocol.pos(to_a, to_i)
-			if self.board.is_valid_move(frm, to):
-				tasks.append(self._call_ws("move", {"from": frm, "to": to}))
+		all_moves = self.board.get_possible_moves(self.my_color)
+		for frm, all_to in all_moves:
+			to = random.choice(all_to)
+			tasks.append(self._call_ws("move", {"from": frm, "to": to}))
 		await asyncio.gather(*tasks)
 
 

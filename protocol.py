@@ -130,19 +130,26 @@ class Piece:
 			assert (False)
 
 		if self.type == ROOK:
-			s += "rook"
+			s += "rook "
 		elif self.type == KNIGHT:
-			s += "knight"
+			s += "knight "
 		elif self.type == BISHOP:
-			s += "bishop"
+			s += "bishop "
 		elif self.type == KING:
-			s += "king"
+			s += "king "
 		elif self.type == QUEEN:
-			s += "queen"
+			s += "queen "
 		elif self.type == PAWN:
-			s += "pawn"
+			s += "pawn "
 		else:
 			assert (False)
+
+		if self.moving:
+			s += "moving to {} until {}".format(self.pos, self.end_time)
+		elif self.sleeping:
+			s += "sleeping at {} until {}".format(self.pos, self.end_time)
+		else:
+			s += "static at {}".format(self.pos)
 
 		return s
 

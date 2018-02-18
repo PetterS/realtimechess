@@ -1,4 +1,7 @@
+from typing import List, Tuple
+
 from constants import *
+import protocol
 from protocol import Piece, coord
 
 
@@ -170,3 +173,33 @@ class Board:
 
 		else:
 			return False
+
+	def get_possible_moves(self, color) -> List[Tuple[str, List[str]]]:
+		result = []
+		for a in range(8):
+			for i in range(8):
+				if self.state[a][i] is not None and self.state[a][i].color == color:
+					moves = self._get_moves(a, i)
+					if moves:
+						result.append((protocol.pos(a, i), moves))
+		return result
+
+	def _get_moves(self, a, i) -> List[str]:
+		from_pos = protocol.pos(a, i)
+		piece = self.state[a][i]
+		if not piece:
+			return []
+
+		if piece.type == PAWN:
+			d = 1
+			if piece.color == BLACK:
+				d = -1
+			possible = [
+			    protocol.pos(a, i + d),
+			    protocol.pos(a, i + 2 * d),
+			    protocol.pos(a + 1, i + d),
+			    protocol.pos(a - 1, i + d)
+			]
+			return [to for to in possible if self.is_valid_move(from_pos, to)]
+		else:
+			return []
