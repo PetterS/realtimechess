@@ -180,8 +180,6 @@ async def move_websocket_handler(user, game, query):
 	from_id = query.get('from')
 	to_id = query.get('to')
 	if from_id and to_id:
-		# Update the game to resolve the moving pieces.
-		game.update()
 		res = False
 		try:
 			res = game.move(user, from_id[0], to_id[0])
@@ -272,7 +270,8 @@ async def ready_handler(request):
 async def websocket_handler(request):
 	# Anyone can listen to updates for a game.
 	key = request.query.get('g')
-	game = request.app["game_manager"].get(key)
+	game_manager = request.app["game_manager"]
+	game = game_manager.get(key)
 	if not game:
 		raise aiohttp.web.HTTPNotFound(text="Game not found.")
 	user = request.app["user_manager"].get_current_user(request)
@@ -286,6 +285,9 @@ async def websocket_handler(request):
 	async for msg in ws:
 		logging.info("Received %s over websocket.", msg)
 		if msg.type == aiohttp.WSMsgType.TEXT:
+			# Update the game to resolve the moving pieces and
+			# in case it has been recreated.
+			game = game_manager.get(key)
 			url = urllib.parse.urlparse(msg.data)
 			query = urllib.parse.parse_qs(url.query)
 			if user and url.path == '/move':
