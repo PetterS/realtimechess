@@ -34,7 +34,7 @@ logging.getLogger().setLevel(logging.WARNING)
 def user_and_game(request):
 	user = request.app["user_manager"].get_current_user(request)
 	game_key = request.query.get('g')
-	game = game_storage.get(game_key)
+	game = request.app["game_manager"].get(game_key)
 	if not user or not game:
 		raise aiohttp.web.HTTPNotFound(text="No such game.")
 	return user, game
@@ -79,6 +79,7 @@ async def main_page(request):
 	"""Renders the main page. When this page is shown, we create a new
 	channel to push asynchronous updates to the client."""
 	user_manager = request.app["user_manager"]
+	game_manager = request.app["game_manager"]
 	user = user_manager.get_current_user(request)
 	game_key = request.query.get('g')
 	original_game_key = game_key
@@ -91,13 +92,13 @@ async def main_page(request):
 		else:
 			return aiohttp.web.HTTPFound("/loginpage")
 
-	recent_games = game_storage.RecentGamesList(user, game_key)
+	recent_games = game_manager.get_recent(user, game_key)
 
 	if not game_key:
-		game, game_key = game_storage.new(user)
+		game, game_key = game_manager.new(user)
 		logging.info("New game from %s." + str(user))
 	else:
-		game = game_storage.get(game_key)
+		game = game_manager.get(game_key)
 		if not game:
 			return error_response(404, "Game not found")
 
@@ -195,6 +196,7 @@ async def move_websocket_handler(user, game, query):
 
 @auth.authenticated
 async def newgame_handler(request):
+	game_manager = request.app["game_manager"]
 	user, game = user_and_game(request)
 	if game.state != constants.STATE_GAMEOVER:
 		raise aiohttp.web.HTTPForbidden(text="Game is not finished.")
@@ -202,7 +204,7 @@ async def newgame_handler(request):
 	if game.userX == user or game.userO == user:
 		# Create a new game.
 		oldgame = game
-		game, _ = game_storage.new(user, game.key)
+		game, _ = game_manager.new(user, game.key)
 		# Set properties.
 		game.userX = oldgame.userX
 		game.userO = oldgame.userO
@@ -270,7 +272,7 @@ async def ready_handler(request):
 async def websocket_handler(request):
 	# Anyone can listen to updates for a game.
 	key = request.query.get('g')
-	game = game_storage.get(key)
+	game = request.app["game_manager"].get(key)
 	if not game:
 		raise aiohttp.web.HTTPNotFound(text="Game not found.")
 	user = request.app["user_manager"].get_current_user(request)
@@ -333,6 +335,7 @@ def setup_loop(loop, is_debug=False):
 	app.router.add_route('GET', '/websocket', websocket_handler)
 
 	app["user_manager"] = auth.UserManager(unsafe_debug=is_debug)
+	app["game_manager"] = game_storage.GameManager()
 
 	if is_debug:
 		app.router.add_post('/setdebug', setdebug_handler)

@@ -11,28 +11,6 @@ from constants import *
 from protocol import Piece
 from util import HttpCodeException, log_error
 
-games = {}
-
-
-def new(user, key=None):
-	# Use this in Python 3.6+
-	# key = secrets.token_hex(128)
-	if not key:
-		key = os.urandom(8).hex()
-	game = Game(key)
-	game.userX = user
-
-	games[key] = game
-	return game, key
-
-
-def get(key):
-	game = games.get(key, None)
-	if not game:
-		return None
-	game.update()
-	return game
-
 
 class Game():
 	"""All the data we store for a game.
@@ -352,49 +330,10 @@ class Game():
 
 
 class RecentGamesList:
-	def __init__(self, user, exclude_key=None):
-		too_old_games = []
-		for key, game in games.items():
-			if (game.creation_time <=
-			    datetime.datetime.now() - datetime.timedelta(minutes=60)):
-				too_old_games.append(key)
-		for key in too_old_games:
-			del games[key]
-
-		all_games = list(games.values())
-		all_games.sort(key=lambda g: g.creation_time, reverse=True)
-
-		self.joinable_games = []
-		self.observable_games = []
-		self.returnable_games = []
-
-		for game in all_games[:20]:
-			if game.creation_time <= datetime.datetime.now(
-			) - datetime.timedelta(minutes=2):
-				continue
-			key = game.key
-
-			if game.userO:
-				name = (game.userX.name + " vs. " + game.userO.name)
-			else:
-				name = game.userX.name
-
-			if game.userX.id == user.id or (game.userO is not None
-			                                and game.userO.id == user.id):
-				# Do not offer to rejoin a game the player has been part of without
-				# anyone else.
-				if game.userO:
-					self.returnable_games.append((key, name))
-			elif not game.userO:
-				# This is a game created by someone else which no one
-				# has joined yet.
-				self.joinable_games.append((key, name))
-			else:
-				# This is a game with two other players.
-				self.observable_games.append((key, name))
-
-			logging.info("Found game " + name + " (" + key + ") created at " +
-			             str(game.creation_time) + ".")
+	def __init__(self, joinable_games, observable_games, returnable_games):
+		self.joinable_games = joinable_games
+		self.observable_games = observable_games
+		self.returnable_games = returnable_games
 
 	def html(self, games, exclude=None):
 		text = ""
@@ -411,3 +350,72 @@ class RecentGamesList:
 
 	def returnable_html(self, exclude=None):
 		return self.html(self.returnable_games, exclude)
+
+
+class GameManager:
+	def __init__(self):
+		self._games = {}
+
+	def new(self, user, key=None):
+		# Use this in Python 3.6+
+		# key = secrets.token_hex(128)
+		if not key:
+			key = os.urandom(8).hex()
+		game = Game(key)
+		game.userX = user
+
+		self._games[key] = game
+		return game, key
+
+	def get(self, key):
+		game = self._games.get(key, None)
+		if not game:
+			return None
+		game.update()
+		return game
+
+	def get_recent(self, user, exclude_key=None):
+		too_old_games = []
+		for key, game in self._games.items():
+			if (game.creation_time <=
+			    datetime.datetime.now() - datetime.timedelta(minutes=60)):
+				too_old_games.append(key)
+		for key in too_old_games:
+			del self._games[key]
+
+		all_games = list(self._games.values())
+		all_games.sort(key=lambda g: g.creation_time, reverse=True)
+
+		joinable_games = []
+		observable_games = []
+		returnable_games = []
+
+		for game in all_games[:20]:
+			if (game.creation_time <=
+			    datetime.datetime.now() - datetime.timedelta(minutes=2)):
+				continue
+			key = game.key
+
+			if game.userO:
+				name = (game.userX.name + " vs. " + game.userO.name)
+			else:
+				name = game.userX.name
+
+			if game.userX.id == user.id or (game.userO is not None
+			                                and game.userO.id == user.id):
+				# Do not offer to rejoin a game the player has been part of without
+				# anyone else.
+				if game.userO:
+					returnable_games.append((key, name))
+			elif not game.userO:
+				# This is a game created by someone else which no one
+				# has joined yet.
+				joinable_games.append((key, name))
+			else:
+				# This is a game with two other players.
+				observable_games.append((key, name))
+
+			logging.info("Found game " + name + " (" + key + ") created at " +
+			             str(game.creation_time) + ".")
+		return RecentGamesList(joinable_games, observable_games,
+		                       returnable_games)
