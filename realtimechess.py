@@ -32,7 +32,7 @@ logging.getLogger().setLevel(logging.WARNING)
 
 
 def user_and_game(request):
-	user = auth.get_current_user(request)
+	user = request.app["user_manager"].get_current_user(request)
 	game_key = request.query.get('g')
 	game = game_storage.get(game_key)
 	if not user or not game:
@@ -55,7 +55,7 @@ async def anonymous_login_handler(request):
 
 @auth.authenticated
 async def getplayer_page(request):
-	user = auth.get_current_user(request)
+	user = request.app["user_manager"].get_current_user(request)
 	return aiohttp.web.Response(text=json.dumps(user.to_dict()))
 
 
@@ -78,7 +78,8 @@ async def login_page(request):
 async def main_page(request):
 	"""Renders the main page. When this page is shown, we create a new
 	channel to push asynchronous updates to the client."""
-	user = auth.get_current_user(request)
+	user_manager = request.app["user_manager"]
+	user = user_manager.get_current_user(request)
 	game_key = request.query.get('g')
 	original_game_key = game_key
 
@@ -129,7 +130,6 @@ async def main_page(request):
 	recent_games = (returnable_games_html + "\n" + joinable_games_html + "\n" +
 	                observable_games_html)
 
-	top_list = auth.TopPlayers()
 	template_values = {
 	    'me': user,
 	    'game_key': game_key,
@@ -137,7 +137,7 @@ async def main_page(request):
 	    'initial_message': game.get_game_message(),
 	    'recent_games': recent_games,
 	    'rating': user.rating,
-	    'top_players': top_list.html(),
+	    'top_players': user_manager.top_players_html(),
 	    'wins': user.wins,
 	    'losses': user.losses
 	}
@@ -273,7 +273,7 @@ async def websocket_handler(request):
 	game = game_storage.get(key)
 	if not game:
 		raise aiohttp.web.HTTPNotFound(text="Game not found.")
-	user = auth.get_current_user(request)
+	user = request.app["user_manager"].get_current_user(request)
 	logging.info('Websocket connection starting')
 	ws = aiohttp.web.WebSocketResponse()
 	await ws.prepare(request)
@@ -312,7 +312,7 @@ async def setdebug_handler(request):
 	return aiohttp.web.Response(text="OK")
 
 
-def setup_loop(loop):
+def setup_loop(loop, is_debug=False):
 	app = aiohttp.web.Application()
 	app.router.add_get('/', main_page)
 	app.router.add_get('/getplayer', getplayer_page)
@@ -332,7 +332,9 @@ def setup_loop(loop):
 
 	app.router.add_route('GET', '/websocket', websocket_handler)
 
-	if auth.IS_UNSAFE_DEBUG:
+	app["user_manager"] = auth.UserManager(unsafe_debug=is_debug)
+
+	if is_debug:
 		app.router.add_post('/setdebug', setdebug_handler)
 
 	handler = app.make_handler(access_log=logging.getLogger())
@@ -361,11 +363,12 @@ if __name__ == '__main__':
 	if len(sys.argv) < 2 or (sys.argv[1] != "run" and sys.argv[1] != "debug"):
 		print("Specify", sys.argv[0], " run/debug to run.")
 		sys.exit(0)
+	is_debug = False
 	if sys.argv[1] == "debug":
-		auth.IS_UNSAFE_DEBUG = True
+		is_debug = True
 		logging.getLogger().setLevel(logging.INFO)
 	loop = asyncio.get_event_loop()
-	stop = setup_loop(loop)
+	stop = setup_loop(loop, is_debug)
 	if os.name != "nt":
 		loop.add_signal_handler(signal.SIGTERM, loop.stop)
 
