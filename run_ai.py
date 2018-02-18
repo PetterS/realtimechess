@@ -81,7 +81,7 @@ class AiPlayer:
 								    something_happens_at, piece.end_time)
 					if something_happens_at < 1e100:
 						asyncio.ensure_future(
-						    self._call_at(something_happens_at + 0.05, "ping"),
+						    self._call_ws_at(something_happens_at + 0.05, "ping"),
 						    loop=self.loop)
 
 					print(":", end="", flush=True)
@@ -92,11 +92,11 @@ class AiPlayer:
 					print("Websocket error.")
 					break
 
-	async def _call_at(self, timestamp, name, params={}):
+	async def _call_ws_at(self, timestamp, name, params={}):
 		delay = timestamp - self.last_update_timestamp
 		await asyncio.sleep(delay)
 		if timestamp > self.last_update_timestamp:
-			await self._call(name, params)
+			await self._call_ws(name, params)
 
 	async def _call(self, name, params={}):
 		encoded_params = urllib.parse.urlencode(params)

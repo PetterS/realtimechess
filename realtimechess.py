@@ -226,6 +226,10 @@ async def opened_handler(request):
 @auth.authenticated
 async def ping_handler(request):
 	user, game = user_and_game(request)
+	await ping_websocket_handler(user, game)
+	return aiohttp.web.Response(text="OK")
+
+async def ping_websocket_handler(user, game):
 	logging.info("Ping: %s %s", user, game.key)
 	await game.send_update()
 
@@ -240,9 +244,6 @@ async def ping_handler(request):
 
 		game.results_are_written = True
 		game.put()
-
-	return aiohttp.web.Response(text="OK")
-
 
 @auth.authenticated
 async def randomize_handler(request):
@@ -292,6 +293,8 @@ async def websocket_handler(request):
 			query = urllib.parse.parse_qs(url.query)
 			if user and url.path == '/move':
 				await move_websocket_handler(user, game, query)
+			elif url.path == '/ping':
+				await ping_websocket_handler(user, game)
 			elif url.path == '/close':
 				await ws.close()
 			else:
