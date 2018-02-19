@@ -73,7 +73,6 @@ class UserManager:
 				logging.warning("User %s logged in but not found. Recreated.",
 				                name)
 				cur = self.conn.execute(query, (name, ))
-				self.conn.commit()
 				result = cur.fetchone()
 			rating, wins, losses = result
 			user = User(name, rating, wins, losses)
@@ -107,6 +106,7 @@ class UserManager:
 			raise aiohttp.web.HTTPInternalServerError(text="Too many users.")
 		self.conn.execute("INSERT OR REPLACE INTO user(name) VALUES (?)",
 		                  (name, ))
+		self.conn.commit()
 
 	def _password(self, name):
 		sha256 = hashlib.sha256()
