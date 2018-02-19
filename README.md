@@ -13,7 +13,7 @@ If you want to run the server behind a proxy (locally works fine), it must suppo
 
 ## Usage
     $ python3 realtimechess.py run
-Then tell all players to go to http://<your ip>:8080/
+Then tell all players to go to http://&lt;your ip&gt;:8080/
 
 ## Testing
         $ python3 realtimechess.py debug
