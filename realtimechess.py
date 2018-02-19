@@ -56,7 +56,12 @@ async def anonymous_login_handler(request):
 @auth.authenticated
 async def getplayer_page(request):
 	user = request.app["user_manager"].get_current_user(request)
-	return aiohttp.web.Response(text=json.dumps(user.to_dict()))
+	return aiohttp.web.Response(
+	    text=json.dumps({
+	        "rating": user.rating,
+	        "wins": user.wins,
+	        "losses": user.losses
+	    }))
 
 
 async def login_page(request):
@@ -226,24 +231,27 @@ async def opened_handler(request):
 @auth.authenticated
 async def ping_handler(request):
 	user, game = user_and_game(request)
-	await ping_websocket_handler(user, game)
+	user_manager = request.app["user_manager"]
+	await ping_websocket_handler(user_manager, user, game)
 	return aiohttp.web.Response(text="OK")
 
-async def ping_websocket_handler(user, game):
+
+async def ping_websocket_handler(user_manager, user, game):
 	logging.info("Ping: %s %s", user, game.key)
 	await game.send_update()
 
 	if game.state == constants.STATE_GAMEOVER and not game.results_are_written:
 		if game.winner == constants.WHITE:
-			auth.change_ratings(game.userX, game.userO)
+			user_manager.change_ratings(game.userX, game.userO)
 		else:
-			auth.change_ratings(game.userO, game.userX)
+			user_manager.change_ratings(game.userO, game.userX)
 
 		logging.info("White player after update %s.", game.userX)
 		logging.info("Black player after update %s.", game.userO)
 
 		game.results_are_written = True
 		game.put()
+
 
 @auth.authenticated
 async def randomize_handler(request):
@@ -275,7 +283,8 @@ async def websocket_handler(request):
 	game = game_manager.get(key)
 	if not game:
 		raise aiohttp.web.HTTPNotFound(text="Game not found.")
-	user = request.app["user_manager"].get_current_user(request)
+	user_manager = request.app["user_manager"]
+	user = user_manager.get_current_user(request)
 	logging.info('Websocket connection starting')
 	ws = aiohttp.web.WebSocketResponse()
 	await ws.prepare(request)
@@ -294,7 +303,7 @@ async def websocket_handler(request):
 			if user and url.path == '/move':
 				await move_websocket_handler(user, game, query)
 			elif url.path == '/ping':
-				await ping_websocket_handler(user, game)
+				await ping_websocket_handler(user_manager, user, game)
 			elif url.path == '/close':
 				await ws.close()
 			else:

@@ -4,6 +4,7 @@ import logging
 import math
 import os
 import re
+import sqlite3
 
 import aiohttp
 
@@ -17,21 +18,12 @@ LONG_TIME_IN_SECONDS = 10 * 365 * 24 * 60 * 60
 
 
 class User:
-	def __init__(self, name, password):
+	def __init__(self, name, rating, wins, losses):
 		self.id = name + "@anon.com"
 		self.name = name
-		self.password = password
-		self.rating = 1000
-		self.wins = 0
-		self.losses = 0
-
-	def to_dict(self):
-		result = {}
-		for attr in dir(self):
-			if attr != "user" and not callable(getattr(
-			    self, attr)) and not attr.startswith("_"):
-				result[attr] = getattr(self, attr)
-		return result
+		self.rating = rating
+		self.wins = wins
+		self.losses = losses
 
 	def __str__(self):
 		return self.id
@@ -39,13 +31,29 @@ class User:
 	def __eq__(self, other):
 		return self.id == other.id
 
+	def put(self, conn):
+		conn.execute("""UPDATE user
+		             SET rating = ?, wins = ?, losses = ?
+		             WHERE name = ?""",
+		             (self.rating, self.wins, self.losses, self.name))
+
 
 class UserManager:
 	def __init__(self, unsafe_debug=False):
-		self._users = {}
 		# If set to True, will allow @debug_authenticated methods and
 		# will overwrite users on anonymous requests.
 		self.unsafe_debug = unsafe_debug
+
+		if unsafe_debug:
+			self.conn = sqlite3.connect(":memory:")
+		else:
+			self.conn = sqlite3.connect("auth.db")
+
+		self.conn.execute("""CREATE TABLE IF NOT EXISTS
+		                  user(name STRING PRIMARY KEY NOT NULL,
+		                       rating INTEGER DEFAULT 1000 NOT NULL,
+		                       wins INTEGER DEFAULT 0 NOT NULL,
+		                       losses INTEGER DEFAULT 0 NOT NULL);""")
 
 	def get_current_user(self, request):
 		name = request.cookies.get("name")
@@ -54,39 +62,51 @@ class UserManager:
 
 		p = request.cookies.get("password")
 		if p == self._password(name):
-			user = self._users.get(name, None)
-			if user is None:
+			query = "SELECT rating, wins, losses FROM user WHERE name = ?;"
+			cur = self.conn.execute(query, (name, ))
+			result = cur.fetchone()
+			if result is None:
 				# Valid login, but we do not know this user. Must have
 				# forgotten about them. Better create the user and
 				# pretend it didn't happen.
-				user = User(name, self._password(name))
-				self._users[name] = user
+				self._create_new_user(name)
 				logging.warning("User %s logged in but not found. Recreated.",
 				                name)
+				cur = self.conn.execute(query, (name, ))
+				self.conn.commit()
+				result = cur.fetchone()
+			rating, wins, losses = result
+			user = User(name, rating, wins, losses)
 			return user
 		else:
 			logging.error("Incorrect password for %s.", name)
 			return None
 
 	def login(self, name):
-		if name in self._users and not self.unsafe_debug:
+		exists = (self.conn.execute("SELECT 1 FROM user WHERE name=? LIMIT 1;",
+		                            (name, )).fetchone())
+		if exists and not self.unsafe_debug:
 			raise aiohttp.web.HTTPUnauthorized(text="User already exists.")
 		password = self._password(name)
-		self._users[name] = User(name, password)
+		self._create_new_user(name)
 		return password
 
 	def top_players_html(self, limit=4):
-		top_players = list(self._users.values())
-		top_players.sort(key=lambda u: u.rating, reverse=True)
-
-		self.top_list = []
-		for user in top_players[:limit]:
-			self.top_list.append((user.name, user.rating))
-
+		cur = self.conn.execute(
+		    "SELECT name, rating FROM user ORDER BY rating DESC LIMIT ?;",
+		    (limit, ))
 		text = ""
-		for name, rating in self.top_list:
+		for name, rating in cur.fetchall():
 			text += """<tr><td>%s</td><td>%s</td></tr>\n""" % (name, rating)
 		return text
+
+	def _create_new_user(self, name):
+		# Check that the database does not grow without bounds.
+		count, = self.conn.execute("SELECT COUNT(*) FROM user;").fetchone()
+		if count > 10 * 1000 * 1000:
+			raise aiohttp.web.HTTPInternalServerError(text="Too many users.")
+		self.conn.execute("INSERT OR REPLACE INTO user(name) VALUES (?)",
+		                  (name, ))
 
 	def _password(self, name):
 		sha256 = hashlib.sha256()
@@ -94,17 +114,20 @@ class UserManager:
 		sha256.update(SECRET_KEY)
 		return base64.b64encode(sha256.digest()).decode("ascii")
 
+	def change_ratings(self, winner, loser):
+		# http://en.wikipedia.org/wiki/Elo_rating_system#Mathematical_details
+		diff = loser.rating - winner.rating
+		EA = 1.0 / (1 + math.pow(10, diff / 400.0))
+		score = 1.0
+		delta = int(round(32.0 * (score - EA)))
+		winner.rating += delta
+		loser.rating -= delta
+		winner.wins += 1
+		loser.losses += 1
 
-def change_ratings(winner, loser):
-	# http://en.wikipedia.org/wiki/Elo_rating_system#Mathematical_details
-	diff = loser.rating - winner.rating
-	EA = 1.0 / (1 + math.pow(10, diff / 400.0))
-	score = 1.0
-	delta = int(round(32.0 * (score - EA)))
-	winner.rating += delta
-	loser.rating -= delta
-	winner.wins += 1
-	loser.losses += 1
+		winner.put(self.conn)
+		loser.put(self.conn)
+		self.conn.commit()
 
 
 def authenticated(handler):
