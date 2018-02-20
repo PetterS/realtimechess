@@ -193,6 +193,9 @@ async def move_websocket_handler(user, game, query):
 			# to stay open.
 			logging.warning("Move error: %s %s.", ex.status, ex.text)
 			pass
+
+		# TODO: Always send an update, since that makes testing for
+		# invalid moves via websocket easier.
 		if res:
 			await game.send_update()
 

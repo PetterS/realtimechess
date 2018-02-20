@@ -7,7 +7,7 @@ There is a test server running intermittently at [chess.strandmark.net](https://
 ![Screenshot](game/screenshot.png)
 
 ## Requirements
-Python 3.5+ and asyncio. 
+Python 3.5+ and asyncio, jinja2, pytest. 
 
 If you want to run the server behind a proxy (locally works fine), it must support websockets.
 
@@ -16,8 +16,7 @@ If you want to run the server behind a proxy (locally works fine), it must suppo
 Then tell all players to go to http://&lt;your ip&gt;:8080/
 
 ## Testing
-        $ python3 realtimechess.py debug
-        $ python3 integration_tests.py
+        $ python3 -m pytest
         
 ## Contributions
 Contributions are welcome!
