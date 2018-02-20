@@ -328,7 +328,7 @@ async def setdebug_handler(request):
 	return aiohttp.web.Response(text="OK")
 
 
-def setup_loop(loop, is_debug=False):
+def make_app(is_debug):
 	app = aiohttp.web.Application()
 	app.router.add_get('/', main_page)
 	app.router.add_get('/getplayer', getplayer_page)
@@ -353,7 +353,11 @@ def setup_loop(loop, is_debug=False):
 
 	if is_debug:
 		app.router.add_post('/setdebug', setdebug_handler)
+	return app
 
+
+def setup_loop(loop, is_debug=False):
+	app = make_app(is_debug)
 	handler = app.make_handler(access_log=logging.getLogger())
 	web_server = loop.run_until_complete(
 	    loop.create_server(handler, '0.0.0.0', HTTP_PORT))
