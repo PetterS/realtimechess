@@ -53,8 +53,10 @@ class User:
 		return GameState(await self.call("getstate"))
 
 	async def join_game(self, host):
+		await self.ws.close()
 		data = await self.request("/?g=" + host.game)
 		self.game = host.game
+		self.ws = await self.client.ws_connect("/websocket?g=" + self.game)
 		return data
 
 	async def losses(self):
@@ -67,7 +69,6 @@ class User:
 	async def move_websocket(self, from_pos, to_pos):
 		await self.ws.send_str("/move?g={}&from={}&to={}".format(
 		    self.game, from_pos, to_pos))
-		return await self.expect_websocket()
 
 	async def new_game(self):
 		# Access implementation detail to restore cookies.
@@ -144,6 +145,7 @@ class GameTest(AioHTTPTestCase):
 
 		# TODO: Figure out why user2’s websocket is blocking here.
 		await self.user1.expect_websocket()
+		await self.user2.expect_websocket()
 		self.assertEqual(constants.STATE_PLAY,
 		                 (await self.user1.get_state()).game_state())
 
@@ -173,7 +175,11 @@ class GameTest(AioHTTPTestCase):
 	@unittest_run_loop
 	async def test_move(self):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A2"))
+
 		await self.user1.move("A2", "A3")
+		await self.user1.expect_websocket()
+		await self.user2.expect_websocket()
+
 		self.assertFalse((await
 		                  self.user1.get_state()).board().has_piece("A2"))
 		await self.user1.disable_time()
@@ -182,7 +188,11 @@ class GameTest(AioHTTPTestCase):
 	@unittest_run_loop
 	async def test_move_websocket(self):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A2"))
+		
 		await self.user1.move_websocket("A2", "A3")
+		await self.user1.expect_websocket()
+		await self.user2.expect_websocket()
+
 		state = await self.user1.get_state()
 		self.assertFalse(state.board().has_piece("A2"))
 		await self.user1.disable_time()
