@@ -17,6 +17,10 @@ Then tell all players to go to http://&lt;your ip&gt;:8080/
 
 ## Testing
         $ python3 -m pytest
-        
+
+To run the integration test of Chrome + server with Selenium:
+
+        $ python3 browser_test.py
+     
 ## Contributions
 Contributions are welcome!
