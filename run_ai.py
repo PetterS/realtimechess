@@ -94,7 +94,8 @@ class AiPlayer:
 					break
 
 	async def _send_ping_at(self, timestamp):
-		self.latest_ping_scheduled_at = max(self.latest_ping_scheduled_at, timestamp)
+		self.latest_ping_scheduled_at = max(self.latest_ping_scheduled_at,
+		                                    timestamp)
 
 		# Wait for timestamp to arrive.
 		delay = timestamp - self.last_update_timestamp

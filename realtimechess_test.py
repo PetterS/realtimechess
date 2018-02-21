@@ -188,7 +188,7 @@ class GameTest(AioHTTPTestCase):
 	@unittest_run_loop
 	async def test_move_websocket(self):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A2"))
-		
+
 		await self.user1.move_websocket("A2", "A3")
 		await self.user1.expect_websocket()
 		await self.user2.expect_websocket()
