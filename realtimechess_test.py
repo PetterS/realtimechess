@@ -142,8 +142,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(constants.STATE_START,
 		                 (await self.user2.get_state()).game_state())
 		await self.user2.call("ready", {"ready": 1})
-
-		# TODO: Figure out why user2’s websocket is blocking here.
 		await self.user1.expect_websocket()
 		await self.user2.expect_websocket()
 		self.assertEqual(constants.STATE_PLAY,
@@ -161,6 +159,19 @@ class GameTest(AioHTTPTestCase):
 		assert response.status == 200
 		text = await response.text()
 		self.assertIn("Choose your name", text)
+		self.assertIn("loginpage", str(response.url))
+
+	@unittest_run_loop
+	async def test_redirect_to_loginpage_with_game(self):
+		# Access implementation detail to clear cookies.
+		self.client.session._cookie_jar = aiohttp.CookieJar(unsafe=True)
+
+		response = await self.client.request("GET", "/?g=deadbeef")
+		assert response.status == 200
+		text = await response.text()
+		self.assertIn("Choose your name", text)
+		self.assertIn("deadbeef", str(response.url))
+		self.assertIn("loginpage", str(response.url))
 
 	@unittest_run_loop
 	async def test_state(self):
@@ -171,6 +182,12 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(board.WHITE,
 		                 (await
 		                  self.user1.get_state()).board().piece("A2").color)
+
+	@unittest_run_loop
+	async def test_opened(self):
+		await self.user1.call("opened")
+		await self.user1.expect_websocket()
+		await self.user2.expect_websocket()
 
 	@unittest_run_loop
 	async def test_move(self):
@@ -198,6 +215,15 @@ class GameTest(AioHTTPTestCase):
 		await self.user1.disable_time()
 		state = await self.user1.get_state()
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A3"))
+
+	@unittest_run_loop
+	async def test_move_no_destination(self):
+		# Will not give an error.
+		await self.user1.ws.send_str("/move")
+
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await self.user1.call("move", {"from": "A2"})
+		self.assertEqual(400, cm.exception.code)
 
 	@unittest_run_loop
 	async def test_move_other_players(self):
@@ -308,6 +334,25 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(constants.BLACK,
 		                 (await
 		                  self.user1.get_state()).board().piece("H1").color)
+
+	@unittest_run_loop
+	async def test_websocket_ping(self):
+		# Invalid command should be ignored.
+		await self.user1.ws.send_str("/invalid")
+
+		await self.user1.move("A2", "A3")
+		await self.user1.expect_websocket()
+		await self.user1.ws.send_str("/ping")
+		await self.user1.expect_websocket()
+
+	@unittest_run_loop
+	async def test_websocket_no_game(self):
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await self.user1.client.ws_connect("/websocket")
+		self.assertEqual(404, cm.exception.code)
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await self.user1.client.ws_connect("/websocket?g=deadbeef")
+		self.assertEqual(404, cm.exception.code)
 
 	@unittest_run_loop
 	async def test_full_games(self):

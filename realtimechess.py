@@ -307,8 +307,6 @@ async def websocket_handler(request):
 				await move_websocket_handler(user, game, query)
 			elif url.path == '/ping':
 				await ping_websocket_handler(user_manager, user, game)
-			elif url.path == '/close':
-				await ws.close()
 			else:
 				logging.error("Invalid Websocket command: %s %s %s.", user,
 				              url, query)
@@ -359,7 +357,7 @@ def make_app(is_debug):
 	return app
 
 
-def setup_loop(loop, is_debug=False):
+def setup_loop(loop, is_debug=False):  # pragma: no cover
 	app = make_app(is_debug)
 	handler = app.make_handler(access_log=logging.getLogger())
 	web_server = loop.run_until_complete(
@@ -381,7 +379,7 @@ def setup_loop(loop, is_debug=False):
 	return stop
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
 	use_profiling = False
 
 	if len(sys.argv) < 2 or (sys.argv[1] != "run" and sys.argv[1] != "debug"):
