@@ -83,7 +83,7 @@ class Game():
 		]
 		self.update()
 
-	def get_game_message(self, ping_tag=None):
+	def get_game_message(self):
 		game_update = {
 		    'key': self.key,
 		    'userX': self.userX.id,
@@ -102,9 +102,6 @@ class Game():
 
 		for piece in self.all_piece_ids:
 			game_update[piece] = getattr(self, piece)
-
-		if ping_tag is not None:
-			game_update["ping_tag"] = ping_tag
 
 		return json.dumps(game_update)
 
@@ -204,8 +201,8 @@ class Game():
 
 		self.put()
 
-	async def send_update(self, ping_tag=None):
-		message = self.get_game_message(ping_tag)
+	async def send_update(self):
+		message = self.get_game_message()
 		tasks = []
 		for ws in self.observers:
 			if not ws.closed:
@@ -223,8 +220,7 @@ class Game():
 		elif self.userO.id and user_id == self.userO.id:
 			self.userO_ready = True if int(ready) else False
 		else:
-			logging.warning("set_ready() from a player not in the game.")
-			return
+			raise HttpCodeException(403)
 
 		if self.userO_ready and self.userX_ready:
 			self.state = STATE_PLAY

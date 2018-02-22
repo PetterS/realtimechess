@@ -336,9 +336,23 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(0, await self.user2.wins())
 		self.assertEqual(1, await self.user2.losses())
 
+		# Can not move in STATE_GAMEOVER.
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await self.user1.move("B2", "B3")
+		self.assertEqual(403, cm.exception.code)
+		# Can not randomize in STATE_GAMEOVER.
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await self.user1.call("randomize")
+		self.assertEqual(403, cm.exception.code)
+
 		await self.user2.call("newgame")
 		self.assertEqual(constants.STATE_START,
 		                 (await self.user1.get_state()).game_state())
+		# Can not move in STATE_START.
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await self.user1.move("B1", "C3")
+		self.assertEqual(403, cm.exception.code)
+
 		await self.user2.call("ready", {"ready": 1})
 		await self.user1.call("ready", {"ready": 1})
 		self.assertEqual(constants.STATE_PLAY,
@@ -559,6 +573,10 @@ class GameTest(AioHTTPTestCase):
 
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await user3.move("A7", "A6")
+		self.assertEqual(403, cm.exception.code)
+
+		with self.assertRaises(aiohttp.ClientResponseError) as cm:
+			await user3.call("ready", {"ready": 1})
 		self.assertEqual(403, cm.exception.code)
 
 		await self.user1.move("E2", "E3")
