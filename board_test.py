@@ -119,6 +119,30 @@ class TestIsValidMove(unittest.TestCase):
 		b = board.Board(["2,2;D5"])
 		self.assertFalse(b.is_valid_move("D5", "D7"))
 
+	def test_white_pawn_move_start(self):
+		b = board.Board(["1,6;D2"])
+		self.assertTrue(b.is_valid_move("D2", "D3"))
+		self.assertTrue(b.is_valid_move("D2", "D4"))
+
+		self.assertFalse(b.is_valid_move("D2", "D1"))
+		self.assertFalse(b.is_valid_move("D2", "E3"))
+
+	def test_black_pawn_move_start(self):
+		b = board.Board(["2,6;D7"])
+		self.assertTrue(b.is_valid_move("D7", "D6"))
+		self.assertTrue(b.is_valid_move("D7", "D5"))
+
+		self.assertFalse(b.is_valid_move("D7", "D8"))
+		self.assertFalse(b.is_valid_move("D7", "E6"))
+
+	def test_white_pawn_capture(self):
+		b = board.Board(["1,6;D2", "1,6;E3"])
+		self.assertFalse(b.is_valid_move("D2", "E3"))
+
+	def test_black_pawn_capture(self):
+		b = board.Board(["2,6;D7", "2,6;E6"])
+		self.assertFalse(b.is_valid_move("D7", "E6"))
+
 	def test_invalid_type(self):
 		b = board.Board(["2,12;D5"])
 		self.assertFalse(b.is_valid_move("D5", "D6"))

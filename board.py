@@ -76,7 +76,8 @@ class Board:
 	def _opposing_standing(self, a, i, own_color):
 		"""Square has an enemy standing in the square."""
 		state = self.state[a][i]
-		assert state is not None
+		if state is None:
+			return False
 		return state.color != own_color and not state.moving
 
 	def empty_or_opposing(self, a, i, own_color):
