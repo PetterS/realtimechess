@@ -35,7 +35,7 @@ if __name__ == "__main__":  # pragma: no cover
 		if match:
 			vars[match.group(1)] = match.group(2)
 
-	with open("game/constants.min.js", "w") as f:
+	with open("game/constants.js", "w") as f:
 		f.write("// Compiled from constants.py.\n\n")
 		for key, val in sorted(vars.items()):
 			f.write("var " + key + " = " + val + ";\n")

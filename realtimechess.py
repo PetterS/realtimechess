@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
 import asyncio
+import base64
 import cProfile
+import datetime
 import io
 import json
 import logging
@@ -30,6 +32,17 @@ error_template = Template(
 
 logging.getLogger().setLevel(logging.WARNING)
 
+# The HTML files are static for the duration of the server, so
+# keep the version static while the server is running for the
+# files in the game/ folder as well. The version is needed to
+# keep the files out of the browser cache.
+GAME_FILE_VERSION = base64.urlsafe_b64encode(
+    str(datetime.datetime.now()).encode("ascii")).decode('ascii')
+
+
+def game_file_url(filename):
+	return "/game/{}?v={}".format(filename, GAME_FILE_VERSION)
+
 
 def user_and_game(request):
 	user = request.app["user_manager"].get_current_user(request)
@@ -41,7 +54,11 @@ def user_and_game(request):
 
 
 def error_response(status, message):
-	html = error_template.render({"status": status, "message": message})
+	html = error_template.render({
+	    "status": status,
+	    "message": message,
+	    "game_css": game_file_url("game.css"),
+	})
 	return aiohttp.web.Response(
 	    status=status, text=html, content_type="text/html")
 
@@ -73,7 +90,9 @@ async def login_page(request):
 	template_values = {
 	    'destination': destination,
 	    'login_link': "",
-	    'top_players': ""
+	    'top_players': "",
+	    'game_css': game_file_url("game.css"),
+	    'constants_js': game_file_url("constants.js")
 	}
 	return aiohttp.web.Response(
 	    text=login_template.render(**template_values),
@@ -145,7 +164,10 @@ async def main_page(request):
 	    'rating': user.rating,
 	    'top_players': user_manager.top_players_html(),
 	    'wins': user.wins,
-	    'losses': user.losses
+	    'losses': user.losses,
+	    'game_css': game_file_url("game.css"),
+	    'game_js': game_file_url("game.js"),
+	    'constants_js': game_file_url("constants.js"),
 	}
 
 	return aiohttp.web.Response(
