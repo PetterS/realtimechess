@@ -73,11 +73,10 @@ class Board:
 		state = self.state[a][i]
 		return state is None
 
-	def opposing_standing(self, a, i, own_color):
+	def _opposing_standing(self, a, i, own_color):
 		"""Square has an enemy standing in the square."""
 		state = self.state[a][i]
-		if state is None:
-			return False
+		assert state is not None
 		return state.color != own_color and not state.moving
 
 	def empty_or_opposing(self, a, i, own_color):
@@ -107,10 +106,10 @@ class Board:
 		piece = self.state[fa][fi]
 		if not piece:
 			return False
-		if piece.moving:
+		elif piece.sleeping:
 			return False
-		if piece.sleeping:
-			return False
+		# Moving pieces are not on the board.
+		assert not piece.moving
 
 		# Is a piece of the same color moving here?
 		if self.moving[piece.color][ta][ti]:
@@ -131,7 +130,7 @@ class Board:
 					return True
 
 			# Capture
-			if abs(fa - ta) == 1 and ti - fi == d and self.opposing_standing(
+			if abs(fa - ta) == 1 and ti - fi == d and self._opposing_standing(
 			    ta, ti, piece.color):
 				return True
 
@@ -174,7 +173,8 @@ class Board:
 		else:
 			return False
 
-	def get_possible_moves(self, color) -> List[Tuple[str, List[str]]]:
+	def get_possible_moves(
+	    self, color) -> List[Tuple[str, List[str]]]:  # pragma: no cover
 		result = []
 		for a in range(8):
 			for i in range(8):
@@ -184,7 +184,7 @@ class Board:
 						result.append((protocol.pos(a, i), moves))
 		return result
 
-	def _get_moves(self, a, i) -> List[str]:
+	def _get_moves(self, a, i) -> List[str]:  # pragma: no cover
 		from_pos = protocol.pos(a, i)
 		piece = self.state[a][i]
 		if not piece:

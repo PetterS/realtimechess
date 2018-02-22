@@ -29,15 +29,6 @@ def createSleepingPattern(end_time, pos):
 	return "S," + str(end_time) + "," + pos
 
 
-def action_from_state(state):
-	try:
-		color_type, action = state.split(";")
-	except ValueError:
-		import logging
-		logging.error("STATE=" + state)
-	return action
-
-
 def coord(s):
 	if len(s) != 2:
 		return None, None
@@ -126,8 +117,6 @@ class Piece:
 			s += "White "
 		elif self.color == BLACK:
 			s += "Black "
-		else:
-			assert (False)
 
 		if self.type == ROOK:
 			s += "rook "
@@ -141,8 +130,6 @@ class Piece:
 			s += "queen "
 		elif self.type == PAWN:
 			s += "pawn "
-		else:
-			assert (False)
 
 		if self.moving:
 			s += "moving to {} until {}".format(self.pos, self.end_time)

@@ -25,7 +25,7 @@ PAWN = 6
 SECONDS_PER_STONE = 1.0
 GO_WIN_RATIO = 0.5
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
 	# Convert to Javascript as well.
 
 	constant_definition = re.compile(r"^(\w+) += +(.+)$")
