@@ -73,6 +73,10 @@ var pieces = [
   {color:"O", value:BLACK_PAWN}
 ];
 
+var CLICKED_PIECE_COLOR = '#FFFF44';
+var HOVER_SQUARE_COLOR = '#88FF88';
+var HOVER_COLLISION_SQUARE_COLOR = '#FF9999';
+
 updateRemovedPiece = function(i) {
   // Is the position of this piece the currently selected one?
   if (selectedSquareId != null && selectedSquareId == pieces[i].pos) {
@@ -195,13 +199,12 @@ updateSleepingPiece = function(i, endTimeStamp, pos) {
   } else {
     animationComplete();
   }
-
-  console.log("Sleeping " + i + ", timeStamp:" + endTimeStamp + ", endPos:" + pos);
 }
 
 updateMovingPiece = function(i, endTimeStamp, endPos) {
   pieces[i].moving = true;
   pieces[i].sleeping = false;
+  pieces[i].pos = endPos;
 
   // Set the piece moving towards the end square.
   var square = $("#" + endPos);
@@ -240,8 +243,6 @@ updateMovingPiece = function(i, endTimeStamp, endPos) {
   } else {
     animationComplete();
   }
-
-  console.log("Moved " + i + ", timeStamp:" + endTimeStamp + ", endPos:" + endPos);
 }
 
 updateGame = function() {
@@ -384,6 +385,7 @@ sendMessage = function(path, opt_param) {
   if (opt_param) {
     path += '&' + opt_param;
   }
+  console.log("POST", path);
   var xhr = new XMLHttpRequest();
   xhr.open('POST', path, true);
   xhr.send();
@@ -393,11 +395,12 @@ sendWebSocketMessage = function(path, opt_param) {
   if (opt_param) {
     path += '?' + opt_param;
   }
+  console.log("WEBSOCKET", path);
   websocket.send(path)
 };
 
 errorMessage = function(message) {
-  console.log(message);
+  console.error(message);
   sendMessage("/error", "msg=" + encodeURIComponent(message));
 }
 
@@ -545,8 +548,10 @@ click_square = function(id, clickedPieceIndex) {
     if (clickedPieceIndex == null
         || pieces[clickedPieceIndex].color !== state.myColor) {
       $('#'+selectedSquareId).removeAttr('style');
-      // sendMessage("/move", "from=" + selectedSquareId + "&to=" + id);
-      sendWebSocketMessage("/move", "from=" + selectedSquareId + "&to=" + id);
+      if (selectedSquareId != id) {
+        // sendMessage("/move", "from=" + selectedSquareId + "&to=" + id);
+        sendWebSocketMessage("/move", "from=" + selectedSquareId + "&to=" + id);
+      }
       selectedSquareId = null;
     }
 
@@ -554,16 +559,15 @@ click_square = function(id, clickedPieceIndex) {
         && pieces[clickedPieceIndex].color === state.myColor) {
       $('#'+selectedSquareId).removeAttr('style');
       selectedSquareId = id;
-      $('#'+selectedSquareId).css('background', '#FF9999');
+      $('#'+selectedSquareId).css('background', CLICKED_PIECE_COLOR);
     }
 
   } else if (clickedPieceIndex != null) {
     if (pieces[clickedPieceIndex].color === state.myColor) {
       selectedSquareId = id;
-      $('#'+selectedSquareId).css('background', '#FF9999');
+      $('#'+selectedSquareId).css('background', CLICKED_PIECE_COLOR);
     }
   }
-  console.log("click_square(" + id + ") done.");
 }
 
 td_onclick = function() {
@@ -602,15 +606,36 @@ $(window).load(function() {
         var piece = $("#p" + index);
         var square = $("#" + fromPos);
         piece.offset(square.offset());
-        sendWebSocketMessage("/move", "from=" + fromPos + "&to=" + toPos);
+        if (fromPos != toPos) {
+          sendWebSocketMessage("/move", "from=" + fromPos + "&to=" + toPos);
+        }
       },
       out: function(event, ui) {
         $(this).removeAttr('style');
       },
       over: function(event, ui) {
-        $(this).css('background', '#FF9999');
+        var pos = $(this).attr("id");
+        // Is there another piece in this square?
+        for (piece of pieces) {
+          if (piece.pos == pos && piece.color == state.myColor) {
+            $(this).css('background', HOVER_COLLISION_SQUARE_COLOR)
+            return;
+          }
+        }
+        $(this).css('background', HOVER_SQUARE_COLOR);
       }
     });
+  // In order to avoid pieces ending up between two squares in Chrome.
+  $("#chess_board").droppable({
+      drop: function( event, ui ) {
+        var draggedPieceId = ui.draggable.attr("id");
+        var index = parseInt(draggedPieceId.substring(1));
+        var fromPos = pieces[index].pos;
+        var square = $("#" + fromPos);
+        var piece = $("#p" + index);
+        piece.offset(square.offset());
+      }
+  });
 
   console.log("Initializing", INITIAL_MESSAGE)
   openChannel();
