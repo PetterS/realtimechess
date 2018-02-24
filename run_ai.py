@@ -54,14 +54,18 @@ class AiPlayer:
 				self.loop.call_later(self.poll_interval, callback)
 
 			self.loop.call_soon(callback)
-
-			await self._call("ready", {"ready": 1})
-			print("Now ready.")
-
+			is_ready = False
 			async for msg in self.ws:
 				if msg.type == aiohttp.WSMsgType.TEXT:
 					data = json.loads(msg.data)
 					self.state = int(data["state"])
+
+					if self.state == constants.STATE_START and not is_ready:
+						await self._call("ready", {"ready": 1})
+						print("Ready for playing.")
+						is_ready = True
+					else:
+						is_ready = False
 
 					self.pieces = []
 					pieces_str = []
@@ -75,7 +79,7 @@ class AiPlayer:
 					something_happens_at = 1e100
 					self.my_pieces = []
 					for piece in self.pieces:
-						if piece is not None and piece.color == self.my_color:
+						if piece.color == self.my_color:
 							self.my_pieces.append(piece)
 							if piece.moving or piece.sleeping:
 								something_happens_at = min(
@@ -85,6 +89,8 @@ class AiPlayer:
 						    self._send_ping_at(something_happens_at + 0.05),
 						    loop=self.loop)
 
+					await self._dodge_incoming()
+
 					print(":", end="", flush=True)
 				elif msg.type == aiohttp.WSMsgType.CLOSED:
 					print("Websocket closed.")
@@ -92,6 +98,20 @@ class AiPlayer:
 				elif msg.type == aiohttp.WSMsgType.ERROR:
 					print("Websocket error.")
 					break
+
+	async def _dodge_incoming(self):
+		for piece in self.pieces:
+			if piece.moving and piece.color != self.my_color:
+				my_piece = self.board.piece(piece.pos)
+				if my_piece:
+					# We need to save this piece.
+					possible = self.board.get_moves(my_piece.pos)
+					if possible:
+						to = random.choice(possible)
+						await self._call_ws("move", {
+						    "from": my_piece.pos,
+						    "to": to
+						})
 
 	async def _send_ping_at(self, timestamp):
 		self.latest_ping_scheduled_at = max(self.latest_ping_scheduled_at,
@@ -137,6 +157,11 @@ class AiPlayer:
 		tasks = []
 		all_moves = self.board.get_possible_moves(self.my_color)
 		for frm, all_to in all_moves:
+			if random.choice([1, 2, 3]) == 1:
+				continue
+			if self.board.piece(frm).type != constants.PAWN:
+				continue
+
 			to = random.choice(all_to)
 			tasks.append(self._call_ws("move", {"from": frm, "to": to}))
 		await asyncio.gather(*tasks)

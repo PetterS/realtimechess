@@ -174,23 +174,28 @@ class Board:
 		else:
 			return False
 
-	def get_possible_moves(
-	    self, color) -> List[Tuple[str, List[str]]]:  # pragma: no cover
+	# This method is not used for the game, only as a helper method
+	# for the AI.
+	def get_possible_moves(self, color: int) -> List[Tuple[str, List[str]]]:
 		result = []
 		for a in range(8):
 			for i in range(8):
 				if self.state[a][i] is not None and self.state[a][i].color == color:
-					moves = self._get_moves(a, i)
+					pos = protocol.pos(a, i)
+					moves = self.get_moves(pos)
 					if moves:
-						result.append((protocol.pos(a, i), moves))
+						result.append((pos, moves))
 		return result
 
-	def _get_moves(self, a, i) -> List[str]:  # pragma: no cover
-		from_pos = protocol.pos(a, i)
+	# This method is not used for the game, only as a helper method
+	# for the AI.
+	def get_moves(self, from_pos: str) -> List[str]:
+		a, i = protocol.coord(from_pos)
 		piece = self.state[a][i]
 		if not piece:
 			return []
 
+		moves = []
 		if piece.type == PAWN:
 			d = 1
 			if piece.color == BLACK:
@@ -201,6 +206,64 @@ class Board:
 			    protocol.pos(a + 1, i + d),
 			    protocol.pos(a - 1, i + d)
 			]
-			return [to for to in possible if self.is_valid_move(from_pos, to)]
-		else:
-			return []
+			moves = [to for to in possible if self.is_valid_move(from_pos, to)]
+		elif piece.type == ROOK:
+			self._add_all_moves_in_line(moves, a, i, 1, 0)
+			self._add_all_moves_in_line(moves, a, i, 0, 1)
+			self._add_all_moves_in_line(moves, a, i, -1, 0)
+			self._add_all_moves_in_line(moves, a, i, 0, -1)
+		elif piece.type == BISHOP:
+			self._add_all_moves_in_line(moves, a, i, 1, 1)
+			self._add_all_moves_in_line(moves, a, i, -1, -1)
+			self._add_all_moves_in_line(moves, a, i, -1, 1)
+			self._add_all_moves_in_line(moves, a, i, 1, -1)
+		elif piece.type == QUEEN:
+			self._add_all_moves_in_line(moves, a, i, 1, 1)
+			self._add_all_moves_in_line(moves, a, i, -1, -1)
+			self._add_all_moves_in_line(moves, a, i, -1, 1)
+			self._add_all_moves_in_line(moves, a, i, 1, -1)
+			self._add_all_moves_in_line(moves, a, i, 1, 0)
+			self._add_all_moves_in_line(moves, a, i, 0, 1)
+			self._add_all_moves_in_line(moves, a, i, -1, 0)
+			self._add_all_moves_in_line(moves, a, i, 0, -1)
+		elif piece.type == KNIGHT:
+			possible = [
+			    protocol.pos(a + 1, i + 2),
+			    protocol.pos(a - 1, i + 2),
+			    protocol.pos(a + 1, i - 2),
+			    protocol.pos(a - 1, i - 2),
+			    protocol.pos(a + 2, i + 1),
+			    protocol.pos(a - 2, i + 1),
+			    protocol.pos(a + 2, i - 1),
+			    protocol.pos(a - 2, i - 1),
+			]
+			moves = [to for to in possible if self.is_valid_move(from_pos, to)]
+		elif piece.type == KING:
+			possible = [
+			    protocol.pos(a - 1, i + 1),
+			    protocol.pos(a - 1, i),
+			    protocol.pos(a - 1, i - 1),
+			    protocol.pos(a, i + 1),
+			    protocol.pos(a, i - 1),
+			    protocol.pos(a + 1, i + 1),
+			    protocol.pos(a + 1, i),
+			    protocol.pos(a + 1, i - 1),
+			]
+			moves = [to for to in possible if self.is_valid_move(from_pos, to)]
+		return moves
+
+	# This method is not used for the game, only as a helper method
+	# for the AI.
+	def _add_all_moves_in_line(self, moves: List[str], a: int, i: int, da: int,
+	                           di: int) -> None:
+		color = self.state[a][i].color
+		while True:
+			a += da
+			i += di
+			if a < 0 or a >= 8 or i < 0 or i >= 8:
+				break
+			if self.state[a][i] is not None and self.state[a][i].color == color:
+				break
+			moves.append(protocol.pos(a, i))
+			if self.state[a][i] is not None:
+				break

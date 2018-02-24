@@ -148,5 +148,62 @@ class TestIsValidMove(unittest.TestCase):
 		self.assertFalse(b.is_valid_move("D5", "D6"))
 
 
+class TestPossibleMoves(unittest.TestCase):
+	def test_empty(self):
+		b = board.Board(["1,6;D2"])
+		self.assertEqual(b.get_moves("A2"), [])
+
+	def test_pawn_start(self):
+		b = board.Board(["1,6;D2"])
+		self.assertCountEqual(b.get_moves("D2"), ["D3", "D4"])
+
+	def test_pawn_capture(self):
+		b = board.Board(["1,6;D3", "1,6;E4", "2,6;C4"])
+		self.assertCountEqual(b.get_moves("D3"), ["D4", "C4"])
+
+	def test_black_pawn_(self):
+		b = board.Board(["2,6;D2"])
+		self.assertCountEqual(b.get_moves("D2"), ["D1"])
+
+	def test_rook(self):
+		b = board.Board(["1,1;D3", "2,6;D5", "1,6;D1"])
+		self.assertCountEqual(
+		    b.get_moves("D3"),
+		    ["D2", "D4", "D5", "A3", "B3", "C3", "E3", "F3", "G3", "H3"])
+
+	def test_knight(self):
+		b = board.Board(["1,2;D3"])
+		self.assertCountEqual(
+		    b.get_moves("D3"),
+		    ["F2", "F4", "B2", "B4", "C1", "E1", "C5", "E5"])
+
+	def test_bishop(self):
+		b = board.Board(["2,3;B2"])
+		self.assertCountEqual(
+		    b.get_moves("B2"),
+		    ["A1", "C3", "D4", "E5", "F6", "G7", "H8", "A3", "C1"])
+
+	def test_queen(self):
+		b = board.Board(["2,4;B2", "1,6;C2", "1,6;B4"])
+		self.assertCountEqual(
+		    b.get_moves("B2"), [
+		        "A1", "C3", "D4", "E5", "F6", "G7", "H8", "A3", "C1", "A2",
+		        "B1", "C2", "B3", "B4"
+		    ])
+
+	def test_king(self):
+		b = board.Board(["2,5;B1"])
+		self.assertCountEqual(
+		    b.get_moves("B1"), ["A1", "A2", "B2", "C2", "C1"])
+
+	def test_all(self):
+		b = board.Board(["2,5;B1", "2,3;B2"])
+		moves = {key: val for key, val in b.get_possible_moves(2)}
+		self.assertCountEqual(moves["B1"], ["A1", "A2", "C2", "C1"])
+		self.assertCountEqual(
+		    moves["B2"],
+		    ["A1", "C3", "D4", "E5", "F6", "G7", "H8", "A3", "C1"])
+
+
 if __name__ == '__main__':
 	unittest.main()
