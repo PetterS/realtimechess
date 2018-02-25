@@ -209,6 +209,7 @@ $(window).load(function() {
   updateMovingPiece(1, 7.07, "H3");
 });
 </script>
+<script async defer src="https://buttons.github.io/buttons.js"></script>
   </head>
   <body>
     <div id='display-area'>
@@ -341,8 +342,10 @@ $(window).load(function() {
         </tr>
       </table>
       <div id="gameInformation">
-        Real-time Chess is like normal chess, but there are no turns! All pieces can be moved at any time, but there
-        is a small delay afterwards.
+        <div class="gameInformationText">
+          Real-time Chess is like normal chess, but there are no turns! All pieces can be moved at any time, but there
+          is a small delay afterwards.
+        </div>
       </div>
       <div class="topPlayers beforeGame">
         <h3>Top Players</h3>
@@ -351,6 +354,7 @@ $(window).load(function() {
           {{ top_players|safe }}
         </table>
       </div>
-    </div>     
+    </div>
+    <a class="github-button" href="https://github.com/PetterS/realtimechess" data-size="large" data-show-count="true" aria-label="Star PetterS/realtimechess on GitHub">Star</a>  
   </body>
 </html>

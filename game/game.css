@@ -70,10 +70,14 @@ a {
 }
 
 #gameInformation {
-  text-align: left;
+  text-align: center;
   width: 40vw;
   padding-bottom: 20px;
   margin-top: 50px;
+}
+
+.gameInformationText {
+  text-align: left;
 }
 
 #this-game {
