@@ -1,9 +1,13 @@
+import sqlite3
+import unittest
+from unittest import mock
+
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
 import realtimechess
 
 
-class TestAuthFailures(AioHTTPTestCase):
+class TestAuthDebug(AioHTTPTestCase):
 	async def get_application(self):
 		return realtimechess.make_app(True)
 
@@ -54,18 +58,38 @@ class TestAuthFailures(AioHTTPTestCase):
 		response = await self.client.post("/anonymous_login", data=data)
 		assert response.status == 200
 
-		self.app["user_manager"].unsafe_debug = False
 		self.client.session.cookie_jar.clear()
 		response = await self.client.post("/anonymous_login", data=data)
-		self.app["user_manager"].unsafe_debug = True
-		assert response.status == 401
+		assert response.status == 200
 
 
-class TestNoDebugFailures(AioHTTPTestCase):
+class TestAuthNoDebug(AioHTTPTestCase):
 	async def get_application(self):
-		return realtimechess.make_app(False)
+		real_sqlite3_connect = sqlite3.connect
+		with mock.patch("sqlite3.connect", autospec=True) as mock_connect:
+			self.mock_connect = mock_connect
+			self.mock_connect.return_value = real_sqlite3_connect(":memory:")
+			return realtimechess.make_app(False)
+
+	@unittest_run_loop
+	async def test_real_db(self):
+		self.mock_connect.assert_called_with("auth.db")
 
 	@unittest_run_loop
 	async def test_setdebug_not_present(self):
 		response = await self.client.post("/setdebug", data={})
 		assert response.status == 404
+
+	@unittest_run_loop
+	async def test_user_already_exists(self):
+		data = {"name": "Petter3"}
+		response = await self.client.post("/anonymous_login", data=data)
+		assert response.status == 200
+
+		self.client.session.cookie_jar.clear()
+		response = await self.client.post("/anonymous_login", data=data)
+		assert response.status == 401
+
+
+if __name__ == '__main__':
+	unittest.main()
