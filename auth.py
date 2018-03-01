@@ -173,4 +173,4 @@ async def anonymous_login_handler(request):
 	response.set_cookie('name', name, max_age=LONG_TIME_IN_SECONDS, path='/')
 	response.set_cookie(
 	    'password', password, max_age=LONG_TIME_IN_SECONDS, path='/')
-	return response
+	raise response

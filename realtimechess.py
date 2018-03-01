@@ -66,7 +66,7 @@ def error_response(status, message):
 async def anonymous_login_handler(request):
 	try:
 		return await auth.anonymous_login_handler(request)
-	except aiohttp.web.HTTPException as ex:
+	except aiohttp.web.HTTPError as ex:
 		return error_response(ex.status, ex.text)
 
 
