@@ -131,22 +131,22 @@ class UserManager:
 
 
 def authenticated(handler):
-	def call_handler_if_ok(request):
+	async def call_handler_if_ok(request):
 		manager = request.app["user_manager"]
 		user = manager.get_current_user(request)
 		if user is None:
 			raise aiohttp.web.HTTPForbidden(text="Not logged in.")
-		return handler(request)
+		return await handler(request)
 
 	return call_handler_if_ok
 
 
 def debug_authenticated(handler):
-	def call_handler_if_ok(request):
+	async def call_handler_if_ok(request):
 		manager = request.app["user_manager"]
 		if not manager.unsafe_debug:
 			raise aiohttp.web.HTTPForbidden(text="No debug allowed.")
-		return handler(request)
+		return await handler(request)
 
 	return call_handler_if_ok
 
