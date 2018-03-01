@@ -217,6 +217,12 @@ class GameTest(AioHTTPTestCase):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A3"))
 
 	@unittest_run_loop
+	async def test_move_websocket_error(self):
+		await self.user1.move_websocket("A2", "A1")
+		await self.user1.move_websocket("A2", "")
+		await self.user1.move_websocket("Q21", "A121")
+
+	@unittest_run_loop
 	async def test_move_no_destination(self):
 		# Will not give an error.
 		await self.user1.ws.send_str("/move")
