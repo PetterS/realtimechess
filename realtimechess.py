@@ -112,9 +112,9 @@ async def main_page(request):
 
 	if not user:
 		if game_key is not None:
-			return aiohttp.web.HTTPFound("/loginpage?g=" + str(game_key))
+			raise aiohttp.web.HTTPFound("/loginpage?g=" + str(game_key))
 		else:
-			return aiohttp.web.HTTPFound("/loginpage")
+			raise aiohttp.web.HTTPFound("/loginpage")
 
 	recent_games = game_manager.get_recent(user, game_key)
 
@@ -141,7 +141,7 @@ async def main_page(request):
 
 	game_link = '/?g=' + game_key
 	if not original_game_key:
-		return aiohttp.web.HTTPFound(game_link)
+		raise aiohttp.web.HTTPFound(game_link)
 
 	joinable_games_html = recent_games.joinable_html(game_key)
 	if len(joinable_games_html) > 0:
