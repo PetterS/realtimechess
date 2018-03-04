@@ -30,8 +30,6 @@ login_template = Template(
 error_template = Template(
     open(os.path.join(os.path.dirname(__file__), 'error.html')).read())
 
-logging.getLogger().setLevel(logging.WARNING)
-
 # The HTML files are static for the duration of the server, so
 # keep the version static while the server is running for the
 # files in the game/ folder as well. The version is needed to
@@ -352,7 +350,7 @@ async def setdebug_handler(request):
 
 
 def make_app(is_debug):
-	app = aiohttp.web.Application()
+	app = aiohttp.web.Application(debug=is_debug)
 	app.router.add_get('/', main_page)
 	app.router.add_get('/getplayer', getplayer_page)
 	app.router.add_get('/loginpage', login_page)
@@ -380,6 +378,8 @@ def make_app(is_debug):
 
 
 def setup_loop(loop, is_debug=False):  # pragma: no cover
+	if is_debug:
+		loop.set_debug(is_debug)
 	app = make_app(is_debug)
 	handler = app.make_handler(access_log=logging.getLogger())
 	web_server = loop.run_until_complete(
@@ -407,10 +407,17 @@ if __name__ == '__main__':  # pragma: no cover
 	if len(sys.argv) < 2 or (sys.argv[1] != "run" and sys.argv[1] != "debug"):
 		print("Specify", sys.argv[0], " run/debug to run.")
 		sys.exit(0)
+
+	logging.basicConfig(
+	    format=
+	    '[%(levelname)-8s] %(asctime)s %(name)s %(filename)s:%(lineno)d: %(message)s',
+	    level=logging.WARNING,
+	    datefmt='%Y-%m-%d %H:%M:%S')
+
 	is_debug = False
 	if sys.argv[1] == "debug":
 		is_debug = True
-		logging.getLogger().setLevel(logging.INFO)
+		logging.getLogger().setLevel(logging.DEBUG)
 	loop = asyncio.get_event_loop()
 	stop = setup_loop(loop, is_debug)
 	if os.name != "nt":
