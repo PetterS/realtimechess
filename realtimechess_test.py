@@ -1,10 +1,12 @@
 import asyncio
+import functools
+import inspect
 import json
 import unittest
 import urllib.parse
 
 import aiohttp
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 import board
 import constants
@@ -123,6 +125,30 @@ class GameState:
 		return str(self.data)
 
 
+def _wrap_in_loop(f):
+	"""Decorator that runs the member function in self.loop if needed."""
+
+	@functools.wraps(f)
+	def wrapper(self, *args, **kwargs):
+		result = f(self, *args, **kwargs)
+		if inspect.iscoroutine(result):
+			result = self.loop.run_until_complete(f(self))
+		return result
+
+	return wrapper
+
+
+def async_test(cls):
+	"""Class decorator that allows test methods to be async."""
+	attributes = dir(cls)
+	for attribute in attributes:
+		if attribute.startswith("test"):
+			f = getattr(cls, attribute)
+			setattr(cls, attribute, _wrap_in_loop(f))
+	return cls
+
+
+@async_test
 class GameTest(AioHTTPTestCase):
 	async def get_application(self):
 		return realtimechess.make_app(True)
@@ -150,7 +176,10 @@ class GameTest(AioHTTPTestCase):
 	async def tearDownAsync(self):
 		pass
 
-	@unittest_run_loop
+	def test_async_test(self):
+		# Test that non-coroutines also work.
+		pass
+
 	async def test_redirect_to_loginpage(self):
 		# Access implementation detail to clear cookies.
 		self.client.session._cookie_jar = aiohttp.CookieJar(unsafe=True)
@@ -161,7 +190,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertIn("Choose your name", text)
 		self.assertIn("loginpage", str(response.url))
 
-	@unittest_run_loop
 	async def test_redirect_to_loginpage_with_game(self):
 		# Access implementation detail to clear cookies.
 		self.client.session._cookie_jar = aiohttp.CookieJar(unsafe=True)
@@ -173,7 +201,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertIn("deadbeef", str(response.url))
 		self.assertIn("loginpage", str(response.url))
 
-	@unittest_run_loop
 	async def test_state(self):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A2"))
 		self.assertEqual(board.PAWN,
@@ -183,13 +210,11 @@ class GameTest(AioHTTPTestCase):
 		                 (await
 		                  self.user1.get_state()).board().piece("A2").color)
 
-	@unittest_run_loop
 	async def test_opened(self):
 		await self.user1.call("opened")
 		await self.user1.expect_websocket()
 		await self.user2.expect_websocket()
 
-	@unittest_run_loop
 	async def test_move(self):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A2"))
 
@@ -202,7 +227,6 @@ class GameTest(AioHTTPTestCase):
 		await self.user1.disable_time()
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A3"))
 
-	@unittest_run_loop
 	async def test_move_websocket(self):
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A2"))
 
@@ -216,13 +240,11 @@ class GameTest(AioHTTPTestCase):
 		state = await self.user1.get_state()
 		self.assertTrue((await self.user1.get_state()).board().has_piece("A3"))
 
-	@unittest_run_loop
 	async def test_move_websocket_error(self):
 		await self.user1.move_websocket("A2", "A1")
 		await self.user1.move_websocket("A2", "")
 		await self.user1.move_websocket("Q21", "A121")
 
-	@unittest_run_loop
 	async def test_move_no_destination(self):
 		# Will not give an error.
 		await self.user1.ws.send_str("/move")
@@ -231,31 +253,26 @@ class GameTest(AioHTTPTestCase):
 			await self.user1.call("move", {"from": "A2"})
 		self.assertEqual(400, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_move_other_players(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.move("A7", "A6")
 		self.assertEqual(403, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_move_from_invalid_position(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.move("Q9", "A6")
 		self.assertEqual(400, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_move_to_invalid_position(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.move("A2", "P0")
 		self.assertEqual(400, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_move_from_empty(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.move("A3", "A4")
 		self.assertEqual(404, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_move_moving(self):
 		await self.user1.move("A2", "A3")
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
@@ -265,7 +282,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertFalse((await
 		                  self.user1.get_state()).board().has_piece("A4"))
 
-	@unittest_run_loop
 	async def test_capture(self):
 		await self.user1.disable_time()
 
@@ -282,7 +298,6 @@ class GameTest(AioHTTPTestCase):
 		await self.user2.move("G4", "F3")  #BF3
 		self.assertIs(None, (await self.user1.get_state()).board().piece("A3"))
 
-	@unittest_run_loop
 	async def test_capture2(self):
 		await self.user1.disable_time()
 
@@ -303,7 +318,6 @@ class GameTest(AioHTTPTestCase):
 		                 (await
 		                  self.user1.get_state()).board().piece("H8").type)
 
-	@unittest_run_loop
 	async def test_promotion_white(self):
 		await self.user1.disable_time()
 
@@ -319,7 +333,6 @@ class GameTest(AioHTTPTestCase):
 		                 (await
 		                  self.user1.get_state()).board().piece("B8").type)
 
-	@unittest_run_loop
 	async def test_promotion_black(self):
 		await self.user1.disable_time()
 
@@ -341,7 +354,6 @@ class GameTest(AioHTTPTestCase):
 		                 (await
 		                  self.user1.get_state()).board().piece("H1").color)
 
-	@unittest_run_loop
 	async def test_websocket_ping(self):
 		# Invalid command should be ignored.
 		await self.user1.ws.send_str("/invalid")
@@ -351,7 +363,6 @@ class GameTest(AioHTTPTestCase):
 		await self.user1.ws.send_str("/ping")
 		await self.user1.expect_websocket()
 
-	@unittest_run_loop
 	async def test_websocket_no_game(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.client.ws_connect("/websocket")
@@ -360,7 +371,6 @@ class GameTest(AioHTTPTestCase):
 			await self.user1.client.ws_connect("/websocket?g=deadbeef")
 		self.assertEqual(404, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_full_games(self):
 		self.assertEqual(1000, await self.user1.rating())
 		self.assertEqual(1000, await self.user2.rating())
@@ -445,12 +455,10 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(1, await self.user2.wins())
 		self.assertEqual(2, await self.user2.losses())
 
-	@unittest_run_loop
 	async def test_ping(self):
 		await self.user1.call("ping", {"tag": "123"})
 		await self.user2.call("ping", {"tag": "567"})
 
-	@unittest_run_loop
 	async def test_black_dodge(self):
 		await self.user1.disable_time()
 		await self.user2.move("E7", "E6")
@@ -462,7 +470,6 @@ class GameTest(AioHTTPTestCase):
 		# Dodge this capture.
 		await self.user2.move("G5", "F5")
 
-	@unittest_run_loop
 	async def test_white_dodge(self):
 		await self.user1.disable_time()
 		await self.user1.move("D2", "D4")
@@ -474,7 +481,6 @@ class GameTest(AioHTTPTestCase):
 		# Dodge this capture.
 		await self.user1.move("G5", "F4")
 
-	@unittest_run_loop
 	async def test_move_to_same(self):
 		await self.user1.move("G1", "F3")
 		# Server does not return error, but does not execute.
@@ -488,7 +494,6 @@ class GameTest(AioHTTPTestCase):
 		                 (await
 		                  self.user1.get_state()).board().piece("F3").type)
 
-	@unittest_run_loop
 	async def test_join_game_page(self):
 		# User 2 goes to the front page.
 		front_page = await self.user2.request("/?g=" + self.user2.game)
@@ -496,13 +501,11 @@ class GameTest(AioHTTPTestCase):
 		self.assertIn(str(key1), front_page)
 		self.assertIn("user1", front_page)
 
-	@unittest_run_loop
 	async def test_make_up_game_url(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.request("/?g=123")
 		self.assertEqual(404, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_pawn_move(self):
 		await self.user1.disable_time()
 
@@ -540,7 +543,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertIsNotNone((await
 		                      self.user2.get_state()).board().piece("D6"))
 
-	@unittest_run_loop
 	async def test_capture_respects_time_difference_1(self):
 		await self.user1.disable_time()
 		await self.user1.move("E2", "E3")
@@ -559,7 +561,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(constants.BISHOP, F5.type)
 		self.assertEqual(constants.BLACK, F5.color)
 
-	@unittest_run_loop
 	async def test_capture_respects_time_difference_2(self):
 		await self.user1.disable_time()
 		await self.user1.move("E2", "E3")
@@ -578,7 +579,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(constants.BISHOP, F5.type)
 		self.assertEqual(constants.BLACK, F5.color)
 
-	@unittest_run_loop
 	async def test_capture_respects_time_difference_3(self):
 		await self.user1.disable_time()
 		await self.user1.move("E2", "E3")
@@ -597,7 +597,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(constants.QUEEN, D7.type)
 		self.assertEqual(constants.WHITE, D7.color)
 
-	@unittest_run_loop
 	async def test_capture_respects_time_difference_4(self):
 		await self.user1.disable_time()
 		await self.user1.move("E2", "E3")
@@ -616,7 +615,6 @@ class GameTest(AioHTTPTestCase):
 		self.assertEqual(constants.QUEEN, D7.type)
 		self.assertEqual(constants.WHITE, D7.color)
 
-	@unittest_run_loop
 	async def test_third_player_joins(self):
 		user3 = User(self.client, "user3")
 		await user3.connect()
@@ -633,7 +631,6 @@ class GameTest(AioHTTPTestCase):
 		await self.user1.move("E2", "E3")
 		await self.user2.move("D7", "D6")
 
-	@unittest_run_loop
 	async def test_new_game_check_finished(self):
 		await self.user1.move("E2", "E3")
 		# Game is not finished.
@@ -641,11 +638,11 @@ class GameTest(AioHTTPTestCase):
 			await self.user1.call("newgame")
 		self.assertEqual(403, cm.exception.code)
 
-	@unittest_run_loop
 	async def test_error(self):
 		await self.user1.call("error")
 
 
+@async_test
 class TestStart(AioHTTPTestCase):
 	async def get_application(self):
 		return realtimechess.make_app(True)
@@ -656,13 +653,11 @@ class TestStart(AioHTTPTestCase):
 		self.user2 = User(self.client, "user5")
 		await self.user2.connect()
 
-	@unittest_run_loop
 	async def test_join_own_game(self):
 		self.assertEqual(constants.STATE_START,
 		                 (await self.user1.get_state()).game_state())
 		await self.user1.join_game(self.user1)
 
-	@unittest_run_loop
 	async def test_randomize(self):
 		await self.user2.join_game(self.user1)
 		await self.user1.call("ready", {"ready": 0})
@@ -679,11 +674,11 @@ class TestStart(AioHTTPTestCase):
 		await self.user2.call("randomize")
 
 
+@async_test
 class TestConcurrency(AioHTTPTestCase):
 	async def get_application(self):
 		return realtimechess.make_app(True)
 
-	@unittest_run_loop
 	async def test_concurrency(self):
 		# This test is a little awkward, but it was converted
 		# from non-async code.
