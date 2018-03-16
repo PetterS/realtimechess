@@ -195,7 +195,7 @@ class Board:
 		if not piece:
 			return []
 
-		moves = []
+		moves = []  # type: List[str]
 		if piece.type == PAWN:
 			d = 1
 			if piece.color == BLACK:

@@ -8,9 +8,9 @@ import sqlite3
 
 import aiohttp
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
-if SECRET_KEY:
-	SECRET_KEY = SECRET_KEY.encode('utf-8')
+SECRET_KEY_ENV = os.environ.get('SECRET_KEY')
+if SECRET_KEY_ENV:
+	SECRET_KEY = SECRET_KEY_ENV.encode('utf-8')
 else:
 	SECRET_KEY = b"Chess secret key that no one knows."
 
