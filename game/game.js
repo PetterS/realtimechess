@@ -1,3 +1,4 @@
+import {BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, SLEEPING_TIME, STATE_GAMEOVER, STATE_PLAY, STATE_START, WHITE} from "./constants.js";
 
 jQuery.fn.rotate = function (degrees) {
 	$(this).css({"-webkit-transform": "rotate(" + degrees + "deg)",
@@ -16,8 +17,8 @@ function assert (condition, message) {
 
 let sequenceNumber = null;
 let state = {
-	game_key: GAME_KEY,
-	me: ME
+	gameKey: "",
+	me: ""
 };
 
 let websocket = null;
@@ -375,7 +376,7 @@ function updateGame () {
 }
 
 function sendMessage (path, optParam) {
-	path += "?g=" + state.game_key;
+	path += "?g=" + state.gameKey;
 	if (optParam) {
 		path += "&" + optParam;
 	}
@@ -408,7 +409,7 @@ function onMessage (m) {
 	console.log("Parsing JSON: " + m.data);
 	const newState = JSON.parse(m.data);
 
-	if (newState["key"] !== GAME_KEY) {
+	if (newState["key"] !== state.gameKey) {
 		return;
 	}
 
@@ -484,7 +485,7 @@ function onMessage (m) {
 	// Set the correct data types in the game state.
 	state["time_stamp"] = parseFloat(state["time_stamp"]);
 
-	if (newState["ping_tag"] === ME) {
+	if (newState["ping_tag"] === state.me) {
 		const timeStamp = Date.now() / 1000;
 		const ping = timeStamp - pingStartTime;
 		$("#pingresult").text(ping.toFixed(3) + " s.");
@@ -499,7 +500,7 @@ function openChannel () {
 	if (location.protocol === "http:") {
 		socketProtocol = "ws:";
 	}
-	const ws = new WebSocket(socketProtocol + "//" + location.host + "/websocket?&g=" + state.game_key);
+	const ws = new WebSocket(socketProtocol + "//" + location.host + "/websocket?&g=" + state.gameKey);
 	ws.onopen = (event) => {
 		console.log("WebSocket open.", event);
 		sendMessage("/opened");
@@ -576,7 +577,12 @@ function pieceOnclick () {
 	}
 }
 
-$(window).load(() => {
+export function startGame(gameKey, initialMessage, me) {
+	state = {
+		gameKey: gameKey,
+		me: me
+	};
+
 	// All pieces can be dragged, but only within the board.
 	$(".piece").draggable({ containment: "#chess_board", scroll: false });
 	// Configure all table cells as droppable with suitable
@@ -624,17 +630,17 @@ $(window).load(() => {
 		}
 	});
 
-	console.log("Initializing", INITIAL_MESSAGE);
+	console.log("Initializing", initialMessage);
 	openChannel();
 
 	// Check if we are playing black.
-	const initialJson = JSON.parse(INITIAL_MESSAGE);
+	const initialJson = JSON.parse(initialMessage);
 	if (initialJson.userO === state.me) {
 		flipBoard();
 	}
 
 	// Process the first message.
-	onMessage({data: INITIAL_MESSAGE});
+	onMessage({data: initialMessage});
 
 	for (let i = 0; i < 32; ++i) {
 		const piece = $("#p" + i);
@@ -649,13 +655,13 @@ $(window).load(() => {
 
 	$("#pingbutton").click(() => {
 		pingStartTime = Date.now() / 1000;
-		sendWebSocketMessage("/ping", "tag=" + ME);
+		sendWebSocketMessage("/ping", "tag=" + me);
 	});
 
 	$(document).keypress((event) => {
 		if (event.which === 112 /* p */) {
 			pingStartTime = Date.now() / 1000;
-			sendWebSocketMessage("/ping", "tag=" + ME);
+			sendWebSocketMessage("/ping", "tag=" + me);
 		}
 	});
 
@@ -684,7 +690,7 @@ $(window).load(() => {
 	});
 
 	console.log("Document ready.");
-});
+}
 
 $(window).resize(() => {
 	updateGame();

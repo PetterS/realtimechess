@@ -38,4 +38,4 @@ if __name__ == "__main__":  # pragma: no cover
 	with open("game/constants.js", "w") as f:
 		f.write("// Compiled from constants.py.\n\n")
 		for key, val in sorted(vars.items()):
-			f.write("const " + key + " = " + val + ";\n")
+			f.write("export const " + key + " = " + val + ";\n")

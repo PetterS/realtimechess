@@ -32,6 +32,14 @@ a {
   padding-top: 20px;
 }
 
+#isReady {
+  display: none;
+}
+
+#newGameButton {
+  display: none;
+}
+
 .boxWidth {
   width: 80vw;
 }
@@ -115,6 +123,7 @@ a {
 
 #chess_board {
   border:5px solid #333;
+  display: none;
 }
 #chess_board td {
   background:#fff;
@@ -157,10 +166,11 @@ a {
 
 #ping {
   margin-top: 15px;
+  display: none;
 }
 
 #pingbutton {
-  visibility: hidden;
+  display: none;
 }
 
 .pointerCursor {
@@ -169,6 +179,7 @@ a {
 
 #this-game {
   margin-top: 20px;
+  display: none;
 }
 
 .gameButton {

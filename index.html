@@ -3,14 +3,22 @@
       <title>&#9812;&#9813;</title>
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
       <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-      <script src="{{ constants_js }}"></script>
       <script src="/game/jquery.ui.touch-punch.min.js"></script>
-      <script type='text/javascript'>
+      <script type='module'>
+        import {startGame} from "{{ game_js }}";
+
         const GAME_KEY = '{{ game_key }}';
         const INITIAL_MESSAGE = '{{ initial_message|safe }}';
         const ME = '{{ me }}';
+
+        $(window).load(() => startGame(GAME_KEY, INITIAL_MESSAGE, ME));
       </script>
-      <script src="{{ game_js }}"></script>
+      <script type='text/javascript' nomodule>
+        $(window).load(() => {
+          $("#error_message").text("ES6 Modules are not supported. Please update your browser.");
+          $("#error_modal").show();
+        });
+      </script>
 
       <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
       <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">

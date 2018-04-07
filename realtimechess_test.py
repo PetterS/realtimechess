@@ -132,7 +132,7 @@ def _wrap_in_loop(f):
 	def wrapper(self, *args, **kwargs):
 		result = f(self, *args, **kwargs)
 		if inspect.iscoroutine(result):
-			result = self.loop.run_until_complete(f(self))
+			result = self.loop.run_until_complete(result)
 		return result
 
 	return wrapper

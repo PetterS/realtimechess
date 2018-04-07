@@ -2,7 +2,6 @@
   <head>
       <title>&#9812;&#9813;</title>
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-      <script src="{{ constants_js }}"></script>
 
       <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
       <link rel="stylesheet" type="text/css" href="{{ game_css }}" />
@@ -21,13 +20,16 @@
           padding-left: 8px;
           padding-right: 8px;
           margin-left: 100px;
+          display: none;
         }
 
         .loginLink {
           margin-bottom: 20px;
         }
       </style>
-<script type='text/javascript'>
+<script type='module'>
+import {SLEEPING_TIME} from "./game/constants.js";
+
 jQuery.fn.rotate = function(degrees) {
     $(this).css({'-webkit-transform' : 'rotate('+ degrees +'deg)',
                  '-moz-transform' : 'rotate('+ degrees +'deg)',
@@ -59,7 +61,7 @@ var pieces = [
   {value:BLACK_ROOK},
 ];
 
-updateStaticPiece = function(i, pos) {
+function updateStaticPiece (i, pos) {
   if (i == 0) {
     if (pos == "A6") {
       updateMovingPiece(0, 7.07, "A8");
@@ -75,14 +77,15 @@ updateStaticPiece = function(i, pos) {
   }
 }
 
-showMessage = function(pos, msg) {
-  message.offset(off);
+function showMessage (pos, msg) {
+  const message = $("#message");
+  message.offset(pos);
   message.text(msg);
   message.hide();
   message.fadeIn(500).delay(750).fadeOut(500);
 }
 
-updateSleepingPiece = function(i, pos) {
+function updateSleepingPiece(i, pos) {
   pieces[i].pos = pos;
   pieces[i].moving = false;
   pieces[i].sleeping = true;
@@ -103,8 +106,7 @@ updateSleepingPiece = function(i, pos) {
 
   if (i == 0) {
     $("#message").show()
-    message = $("#message");
-    off = $("#" + pieces[i].pos).offset();
+    const off = $("#" + pieces[i].pos).offset();
     off.left += 75;
     showMessage(off, "Then they sleep for " + SLEEPING_TIME + " seconds.");
   }
@@ -133,7 +135,7 @@ updateSleepingPiece = function(i, pos) {
   }
 }
 
-updateMovingPiece = function(i, duration, endPos) {
+function updateMovingPiece (i, duration, endPos) {
   pieces[i].moving = true;
   pieces[i].sleeping = false;
 
@@ -144,8 +146,7 @@ updateMovingPiece = function(i, duration, endPos) {
 
   if (i == 0) {
     $("#message").show()
-    message = $("#message");
-    off = $("#" + pieces[i].pos).offset();
+    const off = $("#" + pieces[i].pos).offset();
     off.left += 75;
     showMessage(off, "Pieces can move simultaneosly.")
   }
@@ -179,6 +180,8 @@ updateMovingPiece = function(i, duration, endPos) {
 
 $(document).ready(function () {
   $("#message").hide();
+  $("#chess_board").show();
+  $("#this-game").show();
 });
 
 $(window).load(function() {
@@ -208,6 +211,12 @@ $(window).load(function() {
   updateMovingPiece(0, 3.0, "A6");
   updateMovingPiece(1, 7.07, "H3");
 });
+</script>
+<script type='text/javascript' nomodule>
+  $(window).load(() => {
+    $("#error_message").text("ES6 Modules are not supported. Please update your browser.");
+    $("#error_modal").show();
+  });
 </script>
 <script async defer src="https://buttons.github.io/buttons.js"></script>
   </head>
@@ -355,6 +364,13 @@ $(window).load(function() {
         </table>
       </div>
     </div>
-    <a class="github-button" href="https://github.com/PetterS/realtimechess" data-size="large" data-show-count="true" aria-label="Star PetterS/realtimechess on GitHub">Star</a>  
+    <a class="github-button" href="https://github.com/PetterS/realtimechess" data-size="large" data-show-count="true" aria-label="Star PetterS/realtimechess on GitHub">Star</a>
+
+    <div id="error_modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <p id="error_message">Lost connection to the server! Please refresh page.</p>
+      </div>
+    </div> 
   </body>
 </html>

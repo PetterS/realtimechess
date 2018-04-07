@@ -6,6 +6,8 @@ module.exports = {
     },
     "extends": "eslint:recommended",
     "rules": {
+        "eqeqeq": "error",
+        "camelcase": "error",
         "indent": [
             "error",
             "tab"
@@ -23,5 +25,8 @@ module.exports = {
             "always"
         ],
         "no-console": "off",
+    },
+    "parserOptions": {
+        "sourceType": "module"
     }
 };
