@@ -33,6 +33,6 @@ if __name__ == "__main__":
 
 	subprocess.run(["eslint"] + JS_FILES, check=True, shell=True)
 
-	pytest.main()
+	pytest.main(["-v"])
 
 	print("\nPresubmit OK")

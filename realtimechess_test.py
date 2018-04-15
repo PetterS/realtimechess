@@ -365,6 +365,8 @@ class GameTest(AioHTTPTestCase):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.client.ws_connect("/websocket")
 		self.assertEqual(404, cm.exception.code)
+
+	async def test_websocket_invalid_game(self):
 		with self.assertRaises(aiohttp.ClientResponseError) as cm:
 			await self.user1.client.ws_connect("/websocket?g=deadbeef")
 		self.assertEqual(404, cm.exception.code)
