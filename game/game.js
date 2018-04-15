@@ -1,14 +1,29 @@
-import {BISHOP, BLACK, KING, KNIGHT, PAWN, QUEEN, ROOK, SLEEPING_TIME, STATE_GAMEOVER, STATE_PLAY, STATE_START, WHITE} from "./constants.js";
+import {
+	BISHOP,
+	BLACK,
+	KING,
+	KNIGHT,
+	PAWN,
+	QUEEN,
+	ROOK,
+	SLEEPING_TIME,
+	STATE_GAMEOVER,
+	STATE_PLAY,
+	STATE_START,
+	WHITE
+} from "./constants.js";
 
-jQuery.fn.rotate = function (degrees) {
-	$(this).css({"-webkit-transform": "rotate(" + degrees + "deg)",
+jQuery.fn.rotate = function(degrees) {
+	$(this).css({
+		"-webkit-transform": "rotate(" + degrees + "deg)",
 		"-moz-transform": "rotate(" + degrees + "deg)",
 		"-ms-transform": "rotate(" + degrees + "deg)",
-		"transform": "rotate(" + degrees + "deg)"});
+		transform: "rotate(" + degrees + "deg)"
+	});
 	return $(this);
 };
 
-function assert (condition, message) {
+function assert(condition, message) {
 	if (!condition) {
 		message = message || "Assertion failed";
 		throw new Error(message);
@@ -77,7 +92,7 @@ const CLICKED_PIECE_COLOR = "#FFFF44";
 const HOVER_SQUARE_COLOR = "#88FF88";
 const HOVER_COLLISION_SQUARE_COLOR = "#FF9999";
 
-function updateRemovedPiece (i) {
+function updateRemovedPiece(i) {
 	// Is the position of this piece the currently selected one?
 	if (selectedSquareId !== null && selectedSquareId === pieces[i].pos) {
 		// Remove selection.
@@ -91,7 +106,7 @@ function updateRemovedPiece (i) {
 	// TODO: Show piece if needed later.
 }
 
-function updateStaticPiece (i, pos) {
+function updateStaticPiece(i, pos) {
 	pieces[i].pos = pos;
 	pieces[i].moving = false;
 	pieces[i].sleeping = false;
@@ -118,7 +133,7 @@ function updateStaticPiece (i, pos) {
 	piece.rotate(0);
 }
 
-function localTransitionToSleeping (i, endTimeStamp, pos) {
+function localTransitionToSleeping(i, endTimeStamp, pos) {
 	if (pieces[i].color !== state.myColor) {
 		// Not my piece; the other player will take care of this.
 		return;
@@ -141,13 +156,15 @@ function localTransitionToSleeping (i, endTimeStamp, pos) {
 		}
 		if (capture) {
 			// We need to let the server resolve this.
-			console.log("Piece " + i + " has moved into square occupied by " + j);
+			console.log(
+				"Piece " + i + " has moved into square occupied by " + j
+			);
 			sendWebSocketMessage("/ping");
 		}
 	}
 }
 
-function updateSleepingPiece (i, endTimeStamp, pos) {
+function updateSleepingPiece(i, endTimeStamp, pos) {
 	pieces[i].pos = pos;
 	pieces[i].moving = false;
 	pieces[i].sleeping = true;
@@ -181,27 +198,27 @@ function updateSleepingPiece (i, endTimeStamp, pos) {
 		duration = endTimeStamp - state["time_stamp"];
 	}
 
-	function animationComplete () {
+	function animationComplete() {
 		assert(pieces[i].sleeping);
 		updateStaticPiece(i, pos);
 	}
-	function animationProgress (animation, progress) {
-		pieces[i].rotation = (1.0 - progress) * startRotation + progress * endRotation;
+	function animationProgress(animation, progress) {
+		pieces[i].rotation =
+			(1.0 - progress) * startRotation + progress * endRotation;
 		piece.rotate(pieces[i].rotation);
 	}
 	if (duration > 0) {
-		piece.animate(animationTarget,
-			{
-				"duration": 1000 * duration,
-				"done": animationComplete,
-				"progress": animationProgress
-			});
+		piece.animate(animationTarget, {
+			duration: 1000 * duration,
+			done: animationComplete,
+			progress: animationProgress
+		});
 	} else {
 		animationComplete();
 	}
 }
 
-function updateMovingPiece (i, endTimeStamp, endPos) {
+function updateMovingPiece(i, endTimeStamp, endPos) {
 	pieces[i].moving = true;
 	pieces[i].sleeping = false;
 	pieces[i].pos = endPos;
@@ -224,28 +241,28 @@ function updateMovingPiece (i, endTimeStamp, endPos) {
 	const endRotation = -90.0;
 
 	const duration = endTimeStamp - state["time_stamp"];
-	function animationComplete () {
+	function animationComplete() {
 		assert(pieces[i].moving);
 		localTransitionToSleeping(i, null, endPos);
 		updateSleepingPiece(i, null, endPos);
 	}
-	function animationProgress (animation, progress) {
-		pieces[i].rotation = (1.0 - progress) * startRotation + progress * endRotation;
+	function animationProgress(animation, progress) {
+		pieces[i].rotation =
+			(1.0 - progress) * startRotation + progress * endRotation;
 		piece.rotate(pieces[i].rotation);
 	}
 	if (duration > 0) {
-		piece.animate(animationTarget,
-			{
-				"duration": 1000 * duration,
-				"done": animationComplete,
-				"progress": animationProgress
-			});
+		piece.animate(animationTarget, {
+			duration: 1000 * duration,
+			done: animationComplete,
+			progress: animationProgress
+		});
 	} else {
 		animationComplete();
 	}
 }
 
-function updateGame () {
+function updateGame() {
 	if (!state.userO || state.userO === "") {
 		$("#other-player").show();
 		$("#gameInformation").show();
@@ -370,12 +387,14 @@ function updateGame () {
 		}
 	}
 	if (collision) {
-		console.log("There is a collision between pieces. Server needs to resolve.");
+		console.log(
+			"There is a collision between pieces. Server needs to resolve."
+		);
 		sendWebSocketMessage("/ping");
 	}
 }
 
-function sendMessage (path, optParam) {
+function sendMessage(path, optParam) {
 	path += "?g=" + state.gameKey;
 	if (optParam) {
 		path += "&" + optParam;
@@ -386,7 +405,7 @@ function sendMessage (path, optParam) {
 	xhr.send();
 }
 
-function sendWebSocketMessage (path, optParam) {
+function sendWebSocketMessage(path, optParam) {
 	if (optParam) {
 		path += "?" + optParam;
 	}
@@ -394,18 +413,18 @@ function sendWebSocketMessage (path, optParam) {
 	websocket.send(path);
 }
 
-function errorMessage (message) {
+function errorMessage(message) {
 	console.error(message);
 	sendMessage("/error", "msg=" + encodeURIComponent(message));
 }
 
-function showErrorMessage (message) {
+function showErrorMessage(message) {
 	console.error(message);
 	$("#error_message").text(message);
 	$("#error_modal").show();
 }
 
-function onMessage (m) {
+function onMessage(m) {
 	console.log("Parsing JSON: " + m.data);
 	const newState = JSON.parse(m.data);
 
@@ -416,12 +435,19 @@ function onMessage (m) {
 	// Check sequence numbers.
 	const newSequenceNumber = parseInt(newState["seq"]);
 	if (newSequenceNumber > 1) {
-		if (sequenceNumber !== null &&
-        sequenceNumber !== 0 &&
-        sequenceNumber + 1 !== newSequenceNumber &&
-        sequenceNumber !== newSequenceNumber) {
-			errorMessage("Recieved sequence number " + newSequenceNumber +
-                   ", but previous was " + sequenceNumber + ".");
+		if (
+			sequenceNumber !== null &&
+			sequenceNumber !== 0 &&
+			sequenceNumber + 1 !== newSequenceNumber &&
+			sequenceNumber !== newSequenceNumber
+		) {
+			errorMessage(
+				"Recieved sequence number " +
+					newSequenceNumber +
+					", but previous was " +
+					sequenceNumber +
+					"."
+			);
 		}
 
 		if (sequenceNumber !== null && newSequenceNumber < sequenceNumber) {
@@ -453,7 +479,9 @@ function onMessage (m) {
 	}
 
 	if (state.myColor === null && state.userO && state.userO !== "") {
-		$("#headline").text("Observing " + state.userXname + " vs. " + state.userOname);
+		$("#headline").text(
+			"Observing " + state.userXname + " vs. " + state.userOname
+		);
 		$("#isReady").hide();
 		$("#newGameButton").hide();
 	} else if (state["state"] === STATE_START) {
@@ -495,13 +523,15 @@ function onMessage (m) {
 	updateGame();
 }
 
-function openChannel () {
+function openChannel() {
 	let socketProtocol = "wss:";
 	if (location.protocol === "http:") {
 		socketProtocol = "ws:";
 	}
-	const ws = new WebSocket(socketProtocol + "//" + location.host + "/websocket?&g=" + state.gameKey);
-	ws.onopen = (event) => {
+	const ws = new WebSocket(
+		socketProtocol + "//" + location.host + "/websocket?&g=" + state.gameKey
+	);
+	ws.onopen = event => {
 		console.log("WebSocket open.", event);
 		sendMessage("/opened");
 		websocket = ws;
@@ -512,8 +542,8 @@ function openChannel () {
 	ws.onmessage = onMessage;
 }
 
-function flipBoard () {
-	function swapIds (id1, id2) {
+function flipBoard() {
+	function swapIds(id1, id2) {
 		$("#" + id1).attr("id", "tmpUnusedId");
 		$("#" + id2).attr("id", id1);
 		$("#tmpUnusedId").attr("id", id2);
@@ -529,24 +559,31 @@ function flipBoard () {
 	swapIds("bottomMessage", "topMessage");
 }
 
-function clickSquare (id, clickedPieceIndex) {
+function clickSquare(id, clickedPieceIndex) {
 	if (state["state"] !== STATE_PLAY) {
 		return;
 	}
 
 	if (selectedSquareId) {
-		if (clickedPieceIndex === null ||
-        pieces[clickedPieceIndex].color !== state.myColor) {
+		if (
+			clickedPieceIndex === null ||
+			pieces[clickedPieceIndex].color !== state.myColor
+		) {
 			$("#" + selectedSquareId).removeAttr("style");
 			if (selectedSquareId !== id) {
 				// sendMessage("/move", "from=" + selectedSquareId + "&to=" + id);
-				sendWebSocketMessage("/move", "from=" + selectedSquareId + "&to=" + id);
+				sendWebSocketMessage(
+					"/move",
+					"from=" + selectedSquareId + "&to=" + id
+				);
 			}
 			selectedSquareId = null;
 		}
 
-		if (clickedPieceIndex !== null &&
-        pieces[clickedPieceIndex].color === state.myColor) {
+		if (
+			clickedPieceIndex !== null &&
+			pieces[clickedPieceIndex].color === state.myColor
+		) {
 			$("#" + selectedSquareId).removeAttr("style");
 			selectedSquareId = id;
 			$("#" + selectedSquareId).css("background", CLICKED_PIECE_COLOR);
@@ -559,18 +596,24 @@ function clickSquare (id, clickedPieceIndex) {
 	}
 }
 
-function tdOnclick () {
+function tdOnclick() {
 	clickSquare($(this).attr("id"), null);
 }
 
-function pieceOnclick () {
-	const index = parseInt($(this).attr("id").substring(1));
+function pieceOnclick() {
+	const index = parseInt(
+		$(this)
+			.attr("id")
+			.substring(1)
+	);
 	const tdId = pieces[index].pos;
 
 	// To be able to click own pieces, they must be ready.
-	if (pieces[index].color === state.myColor &&
-      !pieces[index].moving &&
-      !pieces[index].sleeping) {
+	if (
+		pieces[index].color === state.myColor &&
+		!pieces[index].moving &&
+		!pieces[index].sleeping
+	) {
 		clickSquare(tdId, index);
 	} else if (pieces[index].color !== state.myColor) {
 		clickSquare(tdId, index);
@@ -584,11 +627,11 @@ export function startGame(gameKey, initialMessage, me) {
 	};
 
 	// All pieces can be dragged, but only within the board.
-	$(".piece").draggable({ containment: "#chess_board", scroll: false });
+	$(".piece").draggable({containment: "#chess_board", scroll: false});
 	// Configure all table cells as droppable with suitable
 	// style changes.
 	$("td").droppable({
-		drop: function (event, ui) {
+		drop: function(event, ui) {
 			$(this).removeAttr("style");
 
 			const draggedPieceId = ui.draggable.attr("id");
@@ -600,13 +643,16 @@ export function startGame(gameKey, initialMessage, me) {
 			const square = $("#" + fromPos);
 			piece.offset(square.offset());
 			if (fromPos !== toPos) {
-				sendWebSocketMessage("/move", "from=" + fromPos + "&to=" + toPos);
+				sendWebSocketMessage(
+					"/move",
+					"from=" + fromPos + "&to=" + toPos
+				);
 			}
 		},
-		out: function () {
+		out: function() {
 			$(this).removeAttr("style");
 		},
-		over: function () {
+		over: function() {
 			const pos = $(this).attr("id");
 			// Is there another piece in this square?
 			for (let piece of pieces) {
@@ -620,7 +666,7 @@ export function startGame(gameKey, initialMessage, me) {
 	});
 	// In order to avoid pieces ending up between two squares in Chrome.
 	$("#chess_board").droppable({
-		drop: function (event, ui) {
+		drop: function(event, ui) {
 			const draggedPieceId = ui.draggable.attr("id");
 			const index = parseInt(draggedPieceId.substring(1));
 			const fromPos = pieces[index].pos;
@@ -650,15 +696,15 @@ export function startGame(gameKey, initialMessage, me) {
 	$("td").click(tdOnclick);
 	$(".piece").click(pieceOnclick);
 
-	$("td").on({ "touchstart": tdOnclick });
-	$(".piece").on({ "touchstart": pieceOnclick });
+	$("td").on({touchstart: tdOnclick});
+	$(".piece").on({touchstart: pieceOnclick});
 
 	$("#pingbutton").click(() => {
 		pingStartTime = Date.now() / 1000;
 		sendWebSocketMessage("/ping", "tag=" + me);
 	});
 
-	$(document).keypress((event) => {
+	$(document).keypress(event => {
 		if (event.which === 112 /* p */) {
 			pingStartTime = Date.now() / 1000;
 			sendWebSocketMessage("/ping", "tag=" + me);
@@ -698,7 +744,8 @@ $(window).resize(() => {
 
 window.onerror = (msg, url, line, col, error) => {
 	const extra = !error ? "" : error;
-	const errorString = "JavaScript: " + msg + " " + url + ", line: " + line + ". " + extra;
+	const errorString =
+		"JavaScript: " + msg + " " + url + ", line: " + line + ". " + extra;
 	errorMessage(errorString);
 	return false;
 };

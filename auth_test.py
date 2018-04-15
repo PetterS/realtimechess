@@ -25,9 +25,7 @@ class TestAuthDebug(AioHTTPTestCase):
 	@unittest_run_loop
 	async def test_login_invalid_name(self):
 		response = await self.client.post(
-		    "/anonymous_login", data={
-		        "name": "as-d%!¤"
-		    })
+		    "/anonymous_login", data={"name": "as-d%!¤"})
 		assert response.status == 400
 		assert "Invalid name" in await response.text()
 

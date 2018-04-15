@@ -30,9 +30,7 @@ class User:
 		self.client.session._cookie_jar = aiohttp.CookieJar(unsafe=True)
 
 		response = await self.client.request(
-		    "POST", "/anonymous_login", data={
-		        "name": self.name
-		    })
+		    "POST", "/anonymous_login", data={"name": self.name})
 		response.raise_for_status()
 		self.game = response.url.query.get("g")
 
