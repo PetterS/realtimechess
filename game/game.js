@@ -14,12 +14,7 @@ import {
 } from "./constants.js";
 
 jQuery.fn.rotate = function(degrees) {
-	$(this).css({
-		"-webkit-transform": "rotate(" + degrees + "deg)",
-		"-moz-transform": "rotate(" + degrees + "deg)",
-		"-ms-transform": "rotate(" + degrees + "deg)",
-		transform: "rotate(" + degrees + "deg)"
-	});
+	$(this).css({transform: "rotate(" + degrees + "deg)"});
 	return $(this);
 };
 
@@ -93,7 +88,6 @@ let state = {
 };
 
 let serverConnection = null;
-let pingStartTime = null;
 
 let selectedSquareId = null;
 
@@ -325,7 +319,6 @@ function updateGame() {
 		$("#this-game").hide();
 		$("#chess_board").hide();
 		$("#isReady").hide();
-		$("#ping").hide();
 		$(".beforeGame").show();
 		for (let i = 0; i < 32; ++i) {
 			$("#p" + i).hide();
@@ -339,7 +332,6 @@ function updateGame() {
 		if (state.state === STATE_START && state.myColor !== null) {
 			$("#isReady").show();
 		}
-		$("#ping").show();
 		$(".beforeGame").hide();
 		for (let i = 0; i < 32; ++i) {
 			$("#p" + i).show();
@@ -542,13 +534,6 @@ function onMessage(newState) {
 	// Set the correct data types in the game state.
 	state["time_stamp"] = parseFloat(state["time_stamp"]);
 
-	if (newState["ping_tag"] === state.me) {
-		const timeStamp = Date.now() / 1000;
-		const ping = timeStamp - pingStartTime;
-		$("#pingresult").text(ping.toFixed(3) + " s.");
-		pingStartTime = null;
-	}
-
 	updateGame();
 }
 
@@ -707,14 +692,8 @@ export function startGame(gameKey, initialMessage, me) {
 	$("td").on({touchstart: tdOnclick});
 	$(".piece").on({touchstart: pieceOnclick});
 
-	$("#pingbutton").click(() => {
-		pingStartTime = Date.now() / 1000;
-		serverConnection.send("/ping", "tag=" + me);
-	});
-
 	$(document).keypress(event => {
 		if (event.which === 112 /* p */) {
-			pingStartTime = Date.now() / 1000;
 			serverConnection.send("/ping", "tag=" + me);
 		}
 	});

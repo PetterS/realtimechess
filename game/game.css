@@ -164,15 +164,6 @@ a {
   margin-top: 5px;
 }
 
-#ping {
-  margin-top: 15px;
-  display: none;
-}
-
-#pingbutton {
-  display: none;
-}
-
 .pointerCursor {
   cursor: pointer;
 }
