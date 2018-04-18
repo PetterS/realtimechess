@@ -30,6 +30,44 @@ function assert(condition, message) {
 	}
 }
 
+class WebsocketConnection {
+	constructor(gameKey, jsonHandler) {
+		let socketProtocol = "wss:";
+		if (location.protocol === "http:") {
+			socketProtocol = "ws:";
+		}
+		const ws = new WebSocket(
+			socketProtocol + "//" + location.host + "/websocket?&g=" + gameKey
+		);
+		ws.onopen = event => {
+			console.log("WebSocket open.", event);
+			sendMessage("/opened");
+			this.ws = ws;
+		};
+		ws.onclose = () => {
+			showErrorMessage(
+				"Lost connection to the server. Please refresh page."
+			);
+		};
+		ws.onmessage = m => {
+			console.log("Parsing JSON: " + m.data);
+			const json = JSON.parse(m.data);
+			jsonHandler(json);
+		};
+	}
+
+	send(path, optParam) {
+		if (!this.ws) {
+			console.warn("Websocket not connected yet.");
+		}
+		if (optParam) {
+			path += "?" + optParam;
+		}
+		console.log("WEBSOCKET", path);
+		this.ws.send(path);
+	}
+}
+
 let sequenceNumber = null;
 let state = {
 	gameKey: "",
@@ -159,7 +197,7 @@ function localTransitionToSleeping(i, endTimeStamp, pos) {
 			console.log(
 				"Piece " + i + " has moved into square occupied by " + j
 			);
-			sendWebSocketMessage("/ping");
+			websocket.send("/ping");
 		}
 	}
 }
@@ -390,7 +428,7 @@ function updateGame() {
 		console.log(
 			"There is a collision between pieces. Server needs to resolve."
 		);
-		sendWebSocketMessage("/ping");
+		websocket.send("/ping");
 	}
 }
 
@@ -405,14 +443,6 @@ function sendMessage(path, optParam) {
 	xhr.send();
 }
 
-function sendWebSocketMessage(path, optParam) {
-	if (optParam) {
-		path += "?" + optParam;
-	}
-	console.log("WEBSOCKET", path);
-	websocket.send(path);
-}
-
 function errorMessage(message) {
 	console.error(message);
 	sendMessage("/error", "msg=" + encodeURIComponent(message));
@@ -424,10 +454,7 @@ function showErrorMessage(message) {
 	$("#error_modal").show();
 }
 
-function onMessage(m) {
-	console.log("Parsing JSON: " + m.data);
-	const newState = JSON.parse(m.data);
-
+function onMessage(newState) {
 	if (newState["key"] !== state.gameKey) {
 		return;
 	}
@@ -454,7 +481,7 @@ function onMessage(m) {
 			// This message is older than what we have already parsed.
 			console.log("onMessage() old message. Will not process it.");
 			// This is a good time to request a new update from the server.
-			sendWebSocketMessage("/ping");
+			websocket.send("/ping");
 			return;
 		}
 	}
@@ -523,25 +550,6 @@ function onMessage(m) {
 	updateGame();
 }
 
-function openChannel() {
-	let socketProtocol = "wss:";
-	if (location.protocol === "http:") {
-		socketProtocol = "ws:";
-	}
-	const ws = new WebSocket(
-		socketProtocol + "//" + location.host + "/websocket?&g=" + state.gameKey
-	);
-	ws.onopen = event => {
-		console.log("WebSocket open.", event);
-		sendMessage("/opened");
-		websocket = ws;
-	};
-	ws.onclose = () => {
-		showErrorMessage("Lost connection to the server. Please refresh page.");
-	};
-	ws.onmessage = onMessage;
-}
-
 function flipBoard() {
 	function swapIds(id1, id2) {
 		$("#" + id1).attr("id", "tmpUnusedId");
@@ -572,7 +580,7 @@ function clickSquare(id, clickedPieceIndex) {
 			$("#" + selectedSquareId).removeAttr("style");
 			if (selectedSquareId !== id) {
 				// sendMessage("/move", "from=" + selectedSquareId + "&to=" + id);
-				sendWebSocketMessage(
+				websocket.send(
 					"/move",
 					"from=" + selectedSquareId + "&to=" + id
 				);
@@ -643,10 +651,7 @@ export function startGame(gameKey, initialMessage, me) {
 			const square = $("#" + fromPos);
 			piece.offset(square.offset());
 			if (fromPos !== toPos) {
-				sendWebSocketMessage(
-					"/move",
-					"from=" + fromPos + "&to=" + toPos
-				);
+				websocket.send("/move", "from=" + fromPos + "&to=" + toPos);
 			}
 		},
 		out: function() {
@@ -677,7 +682,7 @@ export function startGame(gameKey, initialMessage, me) {
 	});
 
 	console.log("Initializing", initialMessage);
-	openChannel();
+	websocket = new WebsocketConnection(state.gameKey, onMessage);
 
 	// Check if we are playing black.
 	const initialJson = JSON.parse(initialMessage);
@@ -701,13 +706,13 @@ export function startGame(gameKey, initialMessage, me) {
 
 	$("#pingbutton").click(() => {
 		pingStartTime = Date.now() / 1000;
-		sendWebSocketMessage("/ping", "tag=" + me);
+		websocket.send("/ping", "tag=" + me);
 	});
 
 	$(document).keypress(event => {
 		if (event.which === 112 /* p */) {
 			pingStartTime = Date.now() / 1000;
-			sendWebSocketMessage("/ping", "tag=" + me);
+			websocket.send("/ping", "tag=" + me);
 		}
 	});
 
