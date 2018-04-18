@@ -438,9 +438,7 @@ function sendMessage(path, optParam) {
 		path += "&" + optParam;
 	}
 	console.log("POST", path);
-	const xhr = new XMLHttpRequest();
-	xhr.open("POST", path, true);
-	xhr.send();
+	fetch(path, {credentials: "include", method: "POST"});
 }
 
 function errorMessage(message) {
