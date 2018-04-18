@@ -30,7 +30,7 @@ function assert(condition, message) {
 	}
 }
 
-class WebsocketConnection {
+class ServerConnection {
 	constructor(gameKey, jsonHandler) {
 		let socketProtocol = "wss:";
 		if (location.protocol === "http:") {
@@ -41,7 +41,7 @@ class WebsocketConnection {
 		);
 		ws.onopen = event => {
 			console.log("WebSocket open.", event);
-			sendMessage("/opened");
+			this.rpc("/opened");
 			this.ws = ws;
 		};
 		ws.onclose = () => {
@@ -56,6 +56,8 @@ class WebsocketConnection {
 		};
 	}
 
+	// Sends a command via Websocket. Does nothing if the
+	// socket is not connected yet.
 	send(path, optParam) {
 		if (!this.ws) {
 			console.warn("Websocket not connected yet.");
@@ -66,6 +68,22 @@ class WebsocketConnection {
 		console.log("WEBSOCKET", path);
 		this.ws.send(path);
 	}
+
+	// Sends an RPC to the server with HTTP post.
+	rpc(path, optParam) {
+		path += "?g=" + state.gameKey;
+		if (optParam) {
+			path += "&" + optParam;
+		}
+		console.log("POST", path);
+		fetch(path, {credentials: "include", method: "POST"});
+	}
+
+	// Reports a client error to the server.
+	reportError(message) {
+		console.error(message);
+		this.rpc("/error", "msg=" + encodeURIComponent(message));
+	}
 }
 
 let sequenceNumber = null;
@@ -74,7 +92,7 @@ let state = {
 	me: ""
 };
 
-let websocket = null;
+let serverConnection = null;
 let pingStartTime = null;
 
 let selectedSquareId = null;
@@ -197,7 +215,7 @@ function localTransitionToSleeping(i, endTimeStamp, pos) {
 			console.log(
 				"Piece " + i + " has moved into square occupied by " + j
 			);
-			websocket.send("/ping");
+			serverConnection.send("/ping");
 		}
 	}
 }
@@ -385,7 +403,7 @@ function updateGame() {
 				pieces[i].color = "O";
 				pieces[i].value = BLACK_KING;
 			} else {
-				errorMessage("Color and type not found.");
+				serverConnection.reportError("Color and type not found.");
 			}
 			const piece = $("#p" + i);
 			piece.text(pieces[i].value);
@@ -428,22 +446,8 @@ function updateGame() {
 		console.log(
 			"There is a collision between pieces. Server needs to resolve."
 		);
-		websocket.send("/ping");
+		serverConnection.send("/ping");
 	}
-}
-
-function sendMessage(path, optParam) {
-	path += "?g=" + state.gameKey;
-	if (optParam) {
-		path += "&" + optParam;
-	}
-	console.log("POST", path);
-	fetch(path, {credentials: "include", method: "POST"});
-}
-
-function errorMessage(message) {
-	console.error(message);
-	sendMessage("/error", "msg=" + encodeURIComponent(message));
 }
 
 function showErrorMessage(message) {
@@ -466,7 +470,7 @@ function onMessage(newState) {
 			sequenceNumber + 1 !== newSequenceNumber &&
 			sequenceNumber !== newSequenceNumber
 		) {
-			errorMessage(
+			serverConnection.reportError(
 				"Recieved sequence number " +
 					newSequenceNumber +
 					", but previous was " +
@@ -479,7 +483,7 @@ function onMessage(newState) {
 			// This message is older than what we have already parsed.
 			console.log("onMessage() old message. Will not process it.");
 			// This is a good time to request a new update from the server.
-			websocket.send("/ping");
+			serverConnection.send("/ping");
 			return;
 		}
 	}
@@ -577,8 +581,7 @@ function clickSquare(id, clickedPieceIndex) {
 		) {
 			$("#" + selectedSquareId).removeAttr("style");
 			if (selectedSquareId !== id) {
-				// sendMessage("/move", "from=" + selectedSquareId + "&to=" + id);
-				websocket.send(
+				serverConnection.send(
 					"/move",
 					"from=" + selectedSquareId + "&to=" + id
 				);
@@ -627,6 +630,8 @@ function pieceOnclick() {
 }
 
 export function startGame(gameKey, initialMessage, me) {
+	console.log("Initializing", initialMessage);
+	serverConnection = new ServerConnection(gameKey, onMessage);
 	state = {
 		gameKey: gameKey,
 		me: me
@@ -649,7 +654,10 @@ export function startGame(gameKey, initialMessage, me) {
 			const square = $("#" + fromPos);
 			piece.offset(square.offset());
 			if (fromPos !== toPos) {
-				websocket.send("/move", "from=" + fromPos + "&to=" + toPos);
+				serverConnection.send(
+					"/move",
+					"from=" + fromPos + "&to=" + toPos
+				);
 			}
 		},
 		out: function() {
@@ -679,9 +687,6 @@ export function startGame(gameKey, initialMessage, me) {
 		}
 	});
 
-	console.log("Initializing", initialMessage);
-	websocket = new WebsocketConnection(state.gameKey, onMessage);
-
 	// Check if we are playing black.
 	const initialJson = JSON.parse(initialMessage);
 	if (initialJson.userO === state.me) {
@@ -704,34 +709,34 @@ export function startGame(gameKey, initialMessage, me) {
 
 	$("#pingbutton").click(() => {
 		pingStartTime = Date.now() / 1000;
-		websocket.send("/ping", "tag=" + me);
+		serverConnection.send("/ping", "tag=" + me);
 	});
 
 	$(document).keypress(event => {
 		if (event.which === 112 /* p */) {
 			pingStartTime = Date.now() / 1000;
-			websocket.send("/ping", "tag=" + me);
+			serverConnection.send("/ping", "tag=" + me);
 		}
 	});
 
 	$("#isReadyCheckBox").click(() => {
 		if ($("#isReadyCheckBox").is(":checked")) {
-			sendMessage("/ready", "ready=1");
+			serverConnection.rpc("/ready", "ready=1");
 			$("#headline").text("Waiting for other player…");
 		} else {
-			sendMessage("/ready", "ready=0");
+			serverConnection.rpc("/ready", "ready=0");
 			$("#headline").text("Click when ready!");
 		}
 	});
 
 	$("#newGameButton").click(() => {
 		sequenceNumber = null;
-		sendMessage("/newgame");
+		serverConnection.rpc("/newgame");
 	});
 
 	$("#randomizePiecesButton").click(() => {
 		sequenceNumber = null;
-		sendMessage("/randomize");
+		serverConnection.rpc("/randomize");
 	});
 
 	$(".close").click(() => {
@@ -749,6 +754,6 @@ window.onerror = (msg, url, line, col, error) => {
 	const extra = !error ? "" : error;
 	const errorString =
 		"JavaScript: " + msg + " " + url + ", line: " + line + ". " + extra;
-	errorMessage(errorString);
+	serverConnection.reportError(errorString);
 	return false;
 };
