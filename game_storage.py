@@ -113,8 +113,8 @@ class Game():
 			          "Game is in STATE_START. State=" + str(self.state) + ".")
 			raise HttpCodeException(403)
 		elif self.state != STATE_PLAY:
-			logging.warning(
-			    "Game is not in STATE_PLAY. State=" + str(self.state) + ".")
+			logging.warning("Game is not in STATE_PLAY. State=" +
+			                str(self.state) + ".")
 			raise HttpCodeException(403)
 
 		if user.id == self.userX.id:
@@ -267,9 +267,10 @@ class Game():
 
 				if piece.pos == piece2.pos:
 					if piece.color == piece2.color:
-						log_error(self,
-						          str(piece) + " and " + str(piece2) +
-						          " occupy the same square.")
+						log_error(
+						    self,
+						    str(piece) + " and " + str(piece2) +
+						    " occupy the same square.")
 						raise HttpCodeException(500)
 
 					# Pieces occupy the same square. If the other piece is not

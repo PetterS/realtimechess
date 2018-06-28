@@ -45,8 +45,8 @@ class AiPlayer:
 			print("Created game", "{}?g={}".format(self.base_url, self.game))
 
 	async def play(self):
-		async with self.session.ws_connect(
-		    self.base_url + 'websocket?g=' + self.game) as self.ws:
+		async with self.session.ws_connect(self.base_url + 'websocket?g=' +
+		                                   self.game) as self.ws:
 			print("Websocket connected.")
 
 			def callback():

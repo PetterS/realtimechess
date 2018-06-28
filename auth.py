@@ -32,10 +32,11 @@ class User:
 		return self.id == other.id
 
 	def put(self, conn):
-		conn.execute("""UPDATE user
+		conn.execute(
+		    """UPDATE user
 		             SET rating = ?, wins = ?, losses = ?
 		             WHERE name = ?""",
-		             (self.rating, self.wins, self.losses, self.name))
+		    (self.rating, self.wins, self.losses, self.name))
 
 
 class UserManager:
