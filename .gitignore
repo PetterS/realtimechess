@@ -5,3 +5,4 @@ __pycache__/
 auth.db
 old_*
 htmlcov/
+realtimechess.egg-info/
