@@ -1,0 +1,9 @@
+aiohttp==3.7.3
+async-timeout==3.0.1
+asyncio==3.4.3
+Jinja2==2.11.2
+multidict==5.1.0
+pytest==4.6.11
+selenium==3.141.0
+typing-extensions==3.7.4.3
+yarl==1.6.3
